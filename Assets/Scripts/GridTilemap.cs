@@ -20,8 +20,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     public Tilemap Tilemap { get => _tilemap; set => _tilemap = value; }
 
     protected abstract Tile CreateTile(int x, int y);
-    protected abstract void OnStart();
     protected abstract void OnShiftEnd();
+    protected virtual void OnStart() { }
 
     private void Start()
     {
@@ -80,7 +80,6 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             for (int x = -halfXCount; x <= halfXCount; x++)
             {
                 Tile tile = CreateTile(x, y);
-                tile.transform = Matrix4x4.Rotate(Quaternion.Euler(0, 0, UnityEngine.Random.Range(0, 4) * 90f));
                 _tilemap.SetTile(new Vector3Int(camCurrTilePos.x + x, camCurrTilePos.y + y, 0), tile);
             }
         }
@@ -111,8 +110,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 for (int x = -halfXCount; x <= halfXCount; x++)
                 {
                     int tileX = x + halfXCount;
-                    Tile tile = viewTiles[tileX, tileY] = CreateTile(x, y);
-                    tile.transform = Matrix4x4.Rotate(Quaternion.Euler(0, 0, UnityEngine.Random.Range(0, 4) * 90f));
+                    viewTiles[tileX, tileY] = CreateTile(x, y);
                 }
             }
         }
@@ -126,8 +124,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 for (int x = begX; x <= endX; x++)
                 {
                     int tileX = x + halfXCount;
-                    Tile tile = viewTiles[tileX, tileY] = CreateTile(x, y);
-                    tile.transform = Matrix4x4.Rotate(Quaternion.Euler(0, 0, UnityEngine.Random.Range(0, 4) * 90f));
+                    viewTiles[tileX, tileY] = CreateTile(x, y);
                 }
             }
         }
@@ -146,13 +143,16 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void LateUpdate()
     {
-        Vector3Int camPrevCell = _cameraCell;
-        Vector3Int camCurrCell = _tilemap.WorldToCell(_camera.transform.position);
-        camCurrCell.z = 0;
-        if (camPrevCell != camCurrCell)
+        if (EditorApplicationUtils.ApplicationIsPlaying)
         {
-            Shift(camPrevCell, camCurrCell);
+            Vector3Int camPrevCell = _cameraCell;
+            Vector3Int camCurrCell = _tilemap.WorldToCell(_camera.transform.position);
+            camCurrCell.z = 0;
+            if (camPrevCell != camCurrCell)
+            {
+                Shift(camPrevCell, camCurrCell);
+            }
+            _cameraCell = camCurrCell;
         }
-        _cameraCell = camCurrCell;
     }
 }

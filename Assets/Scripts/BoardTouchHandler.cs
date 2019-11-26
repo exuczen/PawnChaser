@@ -2,27 +2,30 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using MustHave;
 using MustHave.Utilities;
 using System;
+using UnityEngine.UI;
 
 public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [SerializeField] private BoardTilemap _tilemap = default;
+    [SerializeField] private Image _raycastBlocker = default;
+    //[SerializeField] private Transform _marker = default;
 
     private Transform _selectedPawnTransform = default;
     private Vector3Int _selectedCell = default;
     private Coroutine _shiftPawnRoutine = default;
-    private void Awake()
-    {
-    }
 
+    //private void Awake()
+    //{
+    //}
 
     private IEnumerator ShiftPawnRoutine(Transform pawnTransform, Vector3Int initCell, Vector3Int destCell, Action onEnd)
     {
         //EventSystem currentEventSystem = EventSystem.current;
         //currentEventSystem.enabled = false;
-
-        _tilemap.GetTile(initCell).Content = null;
+        SetInputEnabled(false);
 
         Vector3 begPos = pawnTransform.position;
         Vector3 endPos = _tilemap.Tilemap.GetCellCenterWorld(destCell);
@@ -34,27 +37,62 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
         });
         pawnTransform.position = endPos;
 
+        _tilemap.GetTile(initCell).Content = null;
         _tilemap.GetTile(destCell).Content = pawnTransform;
 
         _selectedCell = destCell;
 
         //EventSystem.current = currentEventSystem;
         //currentEventSystem.enabled = true;
+        SetInputEnabled(true);
+
 
         _shiftPawnRoutine = null;
         onEnd?.Invoke();
+    }
+
+    private Vector3 GetTouchRayIntersectionWithBoard(Vector3 touchPos)
+    {
+        Camera camera = Camera.main;
+        Vector3 worldPoint;
+        if (camera.orthographic && camera.transform.rotation == Quaternion.identity)
+        {
+            worldPoint = camera.ScreenToWorldPoint(touchPos);
+        }
+        else
+        {
+            Maths.GetTouchRayIntersectionWithPlane(camera, touchPos, -_tilemap.transform.forward, _tilemap.transform.position, out worldPoint);
+        }
+        return worldPoint;
+    }
+
+    private void SetInputEnabled(bool enabled)
+    {
+        _raycastBlocker.gameObject.SetActive(!enabled);
+    }
+
+    private void TranslateCamera(Vector2 screenDelta)
+    {
+        Camera camera = Camera.main;
+        Vector3 translation = -camera.ScreenToWorldTranslation(screenDelta);
+        camera.transform.Translate(translation, Space.Self);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
     }
 
-    public void OnDrag(PointerEventData eventData)
+    public void OnDrag(PointerEventData eventData, out bool pawnDragged)
     {
-        if (_selectedPawnTransform && _shiftPawnRoutine == null)
+        pawnDragged = false;
+        if (_shiftPawnRoutine != null)
         {
-            //Debug.Log(GetType() + ".OnDrag");
-            Vector3 worldPoint = Camera.main.ScreenToWorldPoint(eventData.position);
+            return;
+        }
+        if (_selectedPawnTransform)
+        {
+            //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
+            Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             Vector3Int destCell = _tilemap.Tilemap.WorldToCell(worldPoint);
 
             if (destCell != _selectedCell &&
@@ -66,13 +104,28 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
                 if (Mathf.Abs(worldPoint.x - destCellCenter.x) < cellSize.x * 0.325f &&
                     Mathf.Abs(worldPoint.y - destCellCenter.y) < cellSize.y * 0.325f)
                 {
-                    Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + (_tilemap.Tilemap.cellSize + _tilemap.Tilemap.cellGap) + " " + _tilemap.Tilemap.cellBounds.size);
+                    //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
+                    pawnDragged = true;
                     _shiftPawnRoutine = StartCoroutine(ShiftPawnRoutine(_selectedPawnTransform, _selectedCell, destCell, () => {
-                        OnDrag(eventData);
+                        OnDrag(eventData, out bool pawnDragged2);
+                        if (!pawnDragged2)
+                        {
+                            BoundsInt pawnsBounds = _tilemap.GetPawnsBounds();
+                            Debug.Log(GetType() + "." + pawnsBounds.min + " " + pawnsBounds.max);
+                        }
                     }));
                 }
             }
         }
+        else
+        {
+            TranslateCamera(eventData.delta);
+        }
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        OnDrag(eventData, out _);
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -84,14 +137,14 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     {
         if (_shiftPawnRoutine == null)
         {
-            Vector3 worldPoint = Camera.main.ScreenToWorldPoint(eventData.position);
+            Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             //Debug.Log(GetType() + ".OnPonterDown: " + eventData.position + Input.mousePosition + worldPoint);
             BoardTile tile = _tilemap.GetTile(worldPoint, out Vector3Int cell);
             if (tile)
             {
                 _selectedPawnTransform = tile.Content;
                 _selectedCell = cell;
-                Debug.Log(GetType() + ".OnPonterDown: tile: " + _selectedCell);
+                Debug.Log(GetType() + ".OnPonterDown: " + _selectedCell);
             }
         }
     }
