@@ -13,22 +13,24 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     [SerializeField] private Image _raycastBlocker = default;
     //[SerializeField] private Transform _marker = default;
 
+    private Board _board = default;
     private Transform _selectedPawnTransform = default;
-    private Vector3Int _selectedCell = default;
+    private Vector2Int _selectedCell = default;
     private Coroutine _shiftPawnRoutine = default;
 
-    //private void Awake()
-    //{
-    //}
+    private void Awake()
+    {
+        _board = _tilemap.GetComponentInParent<Board>();
+    }
 
-    private IEnumerator ShiftPawnRoutine(Transform pawnTransform, Vector3Int initCell, Vector3Int destCell, Action onEnd)
+    private IEnumerator ShiftPawnRoutine(Transform pawnTransform, Vector2Int initCell, Vector2Int destCell, Action onEnd)
     {
         //EventSystem currentEventSystem = EventSystem.current;
         //currentEventSystem.enabled = false;
         SetInputEnabled(false);
 
         Vector3 begPos = pawnTransform.position;
-        Vector3 endPos = _tilemap.Tilemap.GetCellCenterWorld(destCell);
+        Vector3 endPos = _tilemap.GetCellCenterWorld(destCell);
 
         float duration = 0.3f;
         yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
@@ -93,14 +95,14 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
         {
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
-            Vector3Int destCell = _tilemap.Tilemap.WorldToCell(worldPoint);
+            Vector2Int destCell = _tilemap.WorldToCell(worldPoint);
 
             if (destCell != _selectedCell &&
                 Mathf.Abs(destCell.x - _selectedCell.x) <= 1 && Mathf.Abs(destCell.y - _selectedCell.y) <= 1 &&
                 !_tilemap.GetTile(destCell).Content)
             {
                 Vector3 cellSize = _tilemap.Tilemap.cellSize;
-                Vector3 destCellCenter = _tilemap.Tilemap.GetCellCenterWorld(destCell);
+                Vector3 destCellCenter = _tilemap.GetCellCenterWorld(destCell);
                 if (Mathf.Abs(worldPoint.x - destCellCenter.x) < cellSize.x * 0.325f &&
                     Mathf.Abs(worldPoint.y - destCellCenter.y) < cellSize.y * 0.325f)
                 {
@@ -110,8 +112,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
                         OnDrag(eventData, out bool pawnDragged2);
                         if (!pawnDragged2)
                         {
-                            BoundsInt pawnsBounds = _tilemap.GetPawnsBounds();
-                            Debug.Log(GetType() + "." + pawnsBounds.min + " " + pawnsBounds.max);
+                            _board.FindEnemyPathToTarget();
                         }
                     }));
                 }
@@ -139,7 +140,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
         {
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             //Debug.Log(GetType() + ".OnPonterDown: " + eventData.position + Input.mousePosition + worldPoint);
-            BoardTile tile = _tilemap.GetTile(worldPoint, out Vector3Int cell);
+            BoardTile tile = _tilemap.GetTile(worldPoint, out Vector2Int cell);
             if (tile)
             {
                 _selectedPawnTransform = tile.Content;

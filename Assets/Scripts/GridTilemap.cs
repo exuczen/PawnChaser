@@ -14,23 +14,43 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     protected Grid _grid = default;
     protected Tilemap _tilemap = default;
     protected readonly List<int> _tileIndexPool = new List<int>();
-    protected Vector3Int _cameraCell = default;
+    protected Vector2Int _cameraCell = default;
 
     public Camera Camera { get => _camera; set => _camera = value; }
     public Tilemap Tilemap { get => _tilemap; set => _tilemap = value; }
 
     protected abstract Tile CreateTile(int x, int y);
     protected abstract void OnShiftEnd();
-    protected virtual void OnStart() { }
+    protected virtual void OnAwake() { }
+
+    private void Awake()
+    {
+        OnAwake();
+    }
 
     private void Start()
     {
         _tilemap = GetComponent<Tilemap>();
         _grid = _tilemap.layoutGrid;
-        _cameraCell = _tilemap.WorldToCell(_camera.transform.position);
+        _cameraCell = WorldToCell(_camera.transform.position);
         FillMapInView();
         OnShiftEnd();
-        OnStart();
+    }
+
+    public Vector2Int WorldToCell(Vector3 worldPos)
+    {
+        //return (Vector2Int)_grid.WorldToCell(worldPos);
+        return (Vector2Int)_tilemap.WorldToCell(worldPos);
+    }
+
+    public Vector3 GetCellCenterWorld(Vector2Int cell)
+    {
+        return _tilemap.GetCellCenterWorld(new Vector3Int(cell.x, cell.y, 0));
+    }
+
+    public T GetTile(Vector2Int cell)
+    {
+        return GetTile(new Vector3Int(cell.x, cell.y, 0));
     }
 
     public T GetTile(Vector3Int cell)
@@ -43,10 +63,9 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         return GetTile(worldPoint, out _);
     }
 
-    public T GetTile(Vector3 worldPoint, out Vector3Int cell)
+    public T GetTile(Vector3 worldPoint, out Vector2Int cell)
     {
-        //cell = _grid.WorldToCell(worldPoint);
-        cell = _tilemap.WorldToCell(worldPoint);
+        cell = WorldToCell(worldPoint);
         return GetTile(cell);
     }
 
@@ -71,9 +90,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void FillMapInView()
     {
-
         GetHalfRowsAndColsCount(out int halfYCount, out int halfXCount);
-        Vector3Int camCurrTilePos = _tilemap.WorldToCell(_camera.transform.position);
+        Vector2Int camCurrTilePos = WorldToCell(_camera.transform.position);
         _tilemap.ClearAllTiles();
         for (int y = -halfYCount; y <= halfYCount; y++)
         {
@@ -85,7 +103,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         }
     }
 
-    private void Shift(Vector3Int camPrevCell, Vector3Int camCurrCell)
+    private void Shift(Vector2Int camPrevCell, Vector2Int camCurrCell)
     {
         GetHalfRowsAndColsCount(out int halfYCount, out int halfXCount);
         int deltaY = camCurrCell.y - camPrevCell.y;
@@ -97,7 +115,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             for (int x = -halfXCount; x <= halfXCount; x++)
             {
                 int tileX = x + halfXCount;
-                viewTiles[tileX, tileY] = _tilemap.GetTile<Tile>(new Vector3Int(camCurrCell.x + x, camCurrCell.y + y, 0));
+                viewTiles[tileX, tileY] = GetTile(new Vector2Int(camCurrCell.x + x, camCurrCell.y + y));
             }
         }
         if (deltaY != 0)
@@ -145,9 +163,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     {
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
-            Vector3Int camPrevCell = _cameraCell;
-            Vector3Int camCurrCell = _tilemap.WorldToCell(_camera.transform.position);
-            camCurrCell.z = 0;
+            Vector2Int camPrevCell = _cameraCell;
+            Vector2Int camCurrCell = WorldToCell(_camera.transform.position);
             if (camPrevCell != camCurrCell)
             {
                 Shift(camPrevCell, camCurrCell);

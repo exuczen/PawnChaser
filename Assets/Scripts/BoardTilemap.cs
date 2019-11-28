@@ -6,7 +6,15 @@ using UnityEngine.Tilemaps;
 
 public class BoardTilemap : GridTilemap<BoardTile>
 {
-    [SerializeField] private Transform _pawnsContainer = default;
+    private Transform _pawnsContainer = default;
+    private Transform _targetsContainer = default;
+
+    protected override void OnAwake()
+    {
+        Board board = GetComponentInParent<Board>();
+        _pawnsContainer = board.PawnsContainer;
+        _targetsContainer = board.TargetsContainer;
+    }
 
     protected override Tile CreateTile(int x, int y)
     {
@@ -25,21 +33,26 @@ public class BoardTilemap : GridTilemap<BoardTile>
         }
     }
 
-    public BoundsInt GetPawnsBounds()
+    private Bounds2Int GetChildrenCellBounds(Vector2Int min, Vector2Int max, Transform parent)
     {
-        Vector3Int boundsMin = new Vector3Int(int.MaxValue, int.MaxValue, 0);
-        Vector3Int boundsMax = new Vector3Int(int.MinValue, int.MinValue, 0);
-        foreach (Transform pawnTransform in _pawnsContainer)
+        foreach (Transform child in parent)
         {
-            Vector3Int cell = _tilemap.WorldToCell(pawnTransform.position);
-            boundsMin.x = Mathf.Min(cell.x, boundsMin.x);
-            boundsMin.y = Mathf.Min(cell.y, boundsMin.y);
-            boundsMax.x = Mathf.Max(cell.x, boundsMax.x);
-            boundsMax.y = Mathf.Max(cell.y, boundsMax.y);
+            Vector2Int cell = WorldToCell(child.position);
+            min = Maths.Min(cell, min);
+            max = Maths.Max(cell, max);
         }
-        return new BoundsInt {
-            min = boundsMin,
-            max = boundsMax
-        };
+        return new Bounds2Int(min, max - min + Vector2Int.one);
+    }
+
+    public Bounds2Int GetPawnsCellBounds()
+    {
+        Vector2Int min = new Vector2Int(int.MaxValue, int.MaxValue);
+        Vector2Int max = new Vector2Int(int.MinValue, int.MinValue);
+
+        Bounds2Int bounds = GetChildrenCellBounds(min, max, _pawnsContainer);
+        bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _targetsContainer);
+        bounds.Min -= Vector2Int.one;
+        bounds.Max += Vector2Int.one;
+        return bounds;
     }
 }
