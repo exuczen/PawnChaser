@@ -16,9 +16,9 @@ public class BoardTilemap : GridTilemap<BoardTile>
         _targetsContainer = board.TargetsContainer;
     }
 
-    protected override Tile CreateTile(int x, int y)
+    protected override BoardTile CreateTile(int x, int y)
     {
-        Tile tile = Instantiate(_tiles[0]);
+        BoardTile tile = Instantiate(_tiles[0]);
         //tile.transform = Matrix4x4.Rotate(Quaternion.Euler(0, 0, UnityEngine.Random.Range(0, 4) * 90f));
         return tile;
     }
@@ -33,7 +33,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
         }
     }
 
-    private Bounds2Int GetChildrenCellBounds(Vector2Int min, Vector2Int max, Transform parent)
+    public Bounds2Int GetChildrenCellBounds(Vector2Int min, Vector2Int max, Transform parent)
     {
         foreach (Transform child in parent)
         {

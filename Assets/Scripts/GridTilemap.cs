@@ -9,7 +9,7 @@ using UnityEngine.Tilemaps;
 public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 {
     [SerializeField] protected Camera _camera = default;
-    [SerializeField] protected Tile[] _tiles = default;
+    [SerializeField] protected T[] _tiles = default;
 
     protected Grid _grid = default;
     protected Tilemap _tilemap = default;
@@ -19,7 +19,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     public Camera Camera { get => _camera; set => _camera = value; }
     public Tilemap Tilemap { get => _tilemap; set => _tilemap = value; }
 
-    protected abstract Tile CreateTile(int x, int y);
+    protected abstract T CreateTile(int x, int y);
     protected abstract void OnShiftEnd();
     protected virtual void OnAwake() { }
 
