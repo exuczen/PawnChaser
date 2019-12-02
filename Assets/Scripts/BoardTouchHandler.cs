@@ -16,41 +16,11 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     private Board _board = default;
     private Transform _selectedPawnTransform = default;
     private Vector2Int _selectedCell = default;
-    private Coroutine _shiftPawnRoutine = default;
+    private Coroutine _dragPawnRoutine = default;
 
     private void Awake()
     {
         _board = _tilemap.GetComponentInParent<Board>();
-    }
-
-    private IEnumerator ShiftPawnRoutine(Transform pawnTransform, Vector2Int initCell, Vector2Int destCell, Action onEnd)
-    {
-        //EventSystem currentEventSystem = EventSystem.current;
-        //currentEventSystem.enabled = false;
-        SetInputEnabled(false);
-
-        Vector3 begPos = pawnTransform.position;
-        Vector3 endPos = _tilemap.GetCellCenterWorld(destCell);
-
-        float duration = 0.3f;
-        yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
-            float shift = Maths.GetTransition(TransitionType.COS_IN_PI_RANGE, transition);
-            pawnTransform.position = Vector3.Lerp(begPos, endPos, shift);
-        });
-        pawnTransform.position = endPos;
-
-        _tilemap.GetTile(initCell).Content = null;
-        _tilemap.GetTile(destCell).Content = pawnTransform;
-
-        _selectedCell = destCell;
-
-        //EventSystem.current = currentEventSystem;
-        //currentEventSystem.enabled = true;
-        SetInputEnabled(true);
-
-
-        _shiftPawnRoutine = null;
-        onEnd?.Invoke();
     }
 
     private Vector3 GetTouchRayIntersectionWithBoard(Vector3 touchPos)
@@ -80,6 +50,22 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
         camera.transform.Translate(translation, Space.Self);
     }
 
+    private IEnumerator DragPawnRoutine(PointerEventData eventData, Transform pawnTransform, Vector2Int destCell)
+    {
+        SetInputEnabled(false);
+        yield return _board.MovePawnRoutine(pawnTransform, destCell, () => {
+            _selectedCell = destCell;
+            _dragPawnRoutine = null;
+            OnDrag(eventData, out bool pawnDragged2);
+            if (!pawnDragged2)
+            {
+                _board.MoveEnemyPawn(() => {
+                    SetInputEnabled(true);
+                });
+            }
+        });
+    }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
     }
@@ -87,7 +73,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     public void OnDrag(PointerEventData eventData, out bool pawnDragged)
     {
         pawnDragged = false;
-        if (_shiftPawnRoutine != null)
+        if (_dragPawnRoutine != null)
         {
             return;
         }
@@ -108,13 +94,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
                 {
                     //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
                     pawnDragged = true;
-                    _shiftPawnRoutine = StartCoroutine(ShiftPawnRoutine(_selectedPawnTransform, _selectedCell, destCell, () => {
-                        OnDrag(eventData, out bool pawnDragged2);
-                        if (!pawnDragged2)
-                        {
-                            _board.FindEnemyPathToTarget();
-                        }
-                    }));
+                    _dragPawnRoutine = StartCoroutine(DragPawnRoutine(eventData, _selectedPawnTransform, destCell));
                 }
             }
         }
@@ -136,14 +116,17 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (_shiftPawnRoutine == null)
+        if (_dragPawnRoutine == null)
         {
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             //Debug.Log(GetType() + ".OnPonterDown: " + eventData.position + Input.mousePosition + worldPoint);
             BoardTile tile = _tilemap.GetTile(worldPoint, out Vector2Int cell);
             if (tile)
             {
-                _selectedPawnTransform = tile.Content;
+                if (tile.Content && tile.Content.GetComponent<Pawn>())
+                {
+                    _selectedPawnTransform = tile.Content;
+                }
                 _selectedCell = cell;
                 Debug.Log(GetType() + ".OnPonterDown: " + _selectedCell);
             }
