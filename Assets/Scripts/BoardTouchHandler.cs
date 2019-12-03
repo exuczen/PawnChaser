@@ -11,12 +11,15 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
 {
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Image _raycastBlocker = default;
+    [SerializeField] private Image _selectionCircle = default;
+    [SerializeField] private Image _targetCircle = default;
+
     //[SerializeField] private Transform _marker = default;
 
     private Board _board = default;
     private Transform _selectedPawnTransform = default;
     private Vector2Int _selectedCell = default;
-    private Coroutine _dragPawnRoutine = default;
+    private Coroutine _movePawnRoutine = default;
 
     private void Awake()
     {
@@ -47,22 +50,18 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     {
         Camera camera = Camera.main;
         Vector3 translation = -camera.ScreenToWorldTranslation(screenDelta);
-        camera.transform.Translate(translation, Space.Self);
+        camera.transform.Translate(1f * translation, Space.Self);
     }
 
-    private IEnumerator DragPawnRoutine(PointerEventData eventData, Transform pawnTransform, Vector2Int destCell)
+    private IEnumerator MovePawnRoutine(Transform pawnTransform, Vector2Int destCell)
     {
         SetInputEnabled(false);
         yield return _board.MovePawnRoutine(pawnTransform, destCell, () => {
             _selectedCell = destCell;
-            _dragPawnRoutine = null;
-            OnDrag(eventData, out bool pawnDragged2);
-            if (!pawnDragged2)
-            {
-                _board.MoveEnemyPawn(() => {
-                    SetInputEnabled(true);
-                });
-            }
+            _board.MoveEnemyPawn(() => {
+                _movePawnRoutine = null;
+                SetInputEnabled(true);
+            });
         });
     }
 
@@ -70,10 +69,10 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     {
     }
 
-    public void OnDrag(PointerEventData eventData, out bool pawnDragged)
+    public void OnDrag(PointerEventData eventData)
     {
-        pawnDragged = false;
-        if (_dragPawnRoutine != null)
+        _targetCircle.gameObject.SetActive(false);
+        if (_movePawnRoutine != null)
         {
             return;
         }
@@ -89,12 +88,11 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
             {
                 Vector3 cellSize = _tilemap.Tilemap.cellSize;
                 Vector3 destCellCenter = _tilemap.GetCellCenterWorld(destCell);
-                if (Mathf.Abs(worldPoint.x - destCellCenter.x) < cellSize.x * 0.325f &&
-                    Mathf.Abs(worldPoint.y - destCellCenter.y) < cellSize.y * 0.325f)
+                if (Mathf.Abs(worldPoint.x - destCellCenter.x) < cellSize.x * 0.4f &&
+                    Mathf.Abs(worldPoint.y - destCellCenter.y) < cellSize.y * 0.4f)
                 {
                     //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
-                    pawnDragged = true;
-                    _dragPawnRoutine = StartCoroutine(DragPawnRoutine(eventData, _selectedPawnTransform, destCell));
+                    ShowImageAtPosition(_targetCircle, destCellCenter);
                 }
             }
         }
@@ -102,11 +100,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
         {
             TranslateCamera(eventData.delta);
         }
-    }
 
-    public void OnDrag(PointerEventData eventData)
-    {
-        OnDrag(eventData, out _);
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -116,7 +110,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (_dragPawnRoutine == null)
+        if (_movePawnRoutine == null)
         {
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             //Debug.Log(GetType() + ".OnPonterDown: " + eventData.position + Input.mousePosition + worldPoint);
@@ -126,6 +120,7 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
                 if (tile.Content && tile.Content.GetComponent<Pawn>())
                 {
                     _selectedPawnTransform = tile.Content;
+                    ShowImageAtPosition(_selectionCircle, _selectedPawnTransform.position);
                 }
                 _selectedCell = cell;
                 Debug.Log(GetType() + ".OnPonterDown: " + _selectedCell);
@@ -135,6 +130,20 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
 
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (_selectedPawnTransform && _targetCircle.gameObject.activeSelf)
+        {
+            Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
+            Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
+            _movePawnRoutine = StartCoroutine(MovePawnRoutine(_selectedPawnTransform, destCell));
+        }
+        _targetCircle.gameObject.SetActive(false);
+        _selectionCircle.gameObject.SetActive(false);
         _selectedPawnTransform = null;
+    }
+
+    private void ShowImageAtPosition(Image image, Vector3 worldPoint)
+    {
+        image.gameObject.SetActive(true);
+        image.transform.position = Camera.main.WorldToScreenPoint(worldPoint);
     }
 }
