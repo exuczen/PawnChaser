@@ -110,11 +110,28 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         int deltaX = camCurrCell.x - camPrevCell.x;
         Vector2Int viewSize = new Vector2Int(2 * halfXCount + 1, 2 * halfYCount + 1);
 
-        //Debug.Log(GetType() + ". " + deltaX + " " + deltaY);
+        Debug.Log(GetType() + ". " + deltaX + " " + deltaY);
         if (deltaY != 0)
         {
-            int begY = deltaY > 0 ? Math.Max(-halfYCount, halfYCount - deltaY + 1) : -halfYCount;
-            int endY = Math.Min(halfYCount, begY + Math.Abs(deltaY) - 1);
+            int begY, endY, addedRows = 0;
+            if (Mathf.Abs(deltaY) > viewSize.y)
+            {
+                begY = deltaY > 0 ? Mathf.Max(-viewSize.y - halfYCount, -halfYCount - (deltaY - viewSize.y)) : halfYCount + 1;
+                endY = begY + Mathf.Min(Mathf.Abs(deltaY) - viewSize.y - 1, viewSize.y - 1);
+                for (int y = begY; y <= endY; y++)
+                {
+                    for (int x = -halfXCount; x <= halfXCount; x++)
+                    {
+                        Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camCurrCell.y, 0);
+                        Tile tile = CreateTile(x, y);
+                        tile.color = Color.white;
+                        _tilemap.SetTile(dstXY, tile);
+                    }
+                }
+                addedRows = endY - begY + 1;
+            }
+            begY = deltaY > 0 ? Mathf.Max(-halfYCount, halfYCount - deltaY + 1) : -halfYCount;
+            endY = Mathf.Min(halfYCount, begY + Mathf.Abs(deltaY) - 1);
             int srcYOffset = camCurrCell.y - Math.Sign(deltaY) * viewSize.y;
             for (int y = begY; y <= endY; y++)
             {
@@ -122,17 +139,46 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 {
                     Vector3Int srcXY = new Vector3Int(x + camPrevCell.x, y + srcYOffset, 0);
                     Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camCurrCell.y, 0);
-                    //Tile tile  = CreateTile(x, y);
                     Tile tile = GetTile(srcXY);
                     _tilemap.SetTile(dstXY, tile);
                     _tilemap.SetTile(srcXY, null);
                 }
             }
+            if (addedRows > 0)
+            {
+                begY = deltaY > 0 ? -halfYCount : halfYCount - addedRows;
+                endY = begY + addedRows;
+                for (int y = begY; y <= endY; y++)
+                {
+                    for (int x = -halfXCount; x <= halfXCount; x++)
+                    {
+                        Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camPrevCell.y, 0);
+                        _tilemap.SetTile(dstXY, null);
+                    }
+                }
+            }
         }
         if (deltaX != 0)
         {
-            int begX = deltaX > 0 ? Math.Max(-halfXCount, halfXCount - deltaX + 1) : -halfXCount;
-            int endX = Math.Min(halfXCount, begX + Math.Abs(deltaX) - 1);
+            int begX, endX, addedCols = 0;
+            if (Mathf.Abs(deltaX) > viewSize.x)
+            {
+                begX = deltaX > 0 ? Mathf.Max(-viewSize.x - halfXCount, -halfXCount - (deltaX - viewSize.x)) : halfXCount + 1;
+                endX = begX + Mathf.Min(Mathf.Abs(deltaX) - viewSize.x - 1, viewSize.x - 1);
+                for (int y = -halfYCount; y <= halfYCount; y++)
+                {
+                    for (int x = begX; x <= endX; x++)
+                    {
+                        Vector3Int dstXY = new Vector3Int(x + camCurrCell.x, y + camCurrCell.y, 0);
+                        Tile tile = CreateTile(x, y);
+                        tile.color = Color.white;
+                        _tilemap.SetTile(dstXY, tile);
+                    }
+                }
+                addedCols = endX - begX + 1;
+            }
+            begX = deltaX > 0 ? Mathf.Max(-halfXCount, halfXCount - deltaX + 1) : -halfXCount;
+            endX = Mathf.Min(halfXCount, begX + Mathf.Abs(deltaX) - 1);
             int srcXOffset = camCurrCell.x - Math.Sign(deltaX) * viewSize.x;
             for (int y = -halfYCount; y <= halfYCount; y++)
             {
@@ -140,10 +186,22 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 {
                     Vector3Int srcXY = new Vector3Int(x + srcXOffset, y + camCurrCell.y, 0);
                     Vector3Int dstXY = new Vector3Int(x + camCurrCell.x, y + camCurrCell.y, 0);
-                    //Tile tile = CreateTile(x, y);
-                    Tile tile = GetTile(srcXY);
+                    Tile tile = GetTile(srcXY);// ?? CreateTile(x, y);
                     _tilemap.SetTile(dstXY, tile);
                     _tilemap.SetTile(srcXY, null);
+                }
+            }
+            if (addedCols > 0)
+            {
+                begX = deltaX > 0 ? -halfXCount : halfXCount - addedCols;
+                endX = begX + addedCols;
+                for (int y = -halfYCount; y <= halfYCount; y++)
+                {
+                    for (int x = begX; x <= endX; x++)
+                    {
+                        Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camCurrCell.y, 0);
+                        _tilemap.SetTile(dstXY, null);
+                    }
                 }
             }
         }
@@ -158,6 +216,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             Vector2Int camCurrCell = WorldToCell(_camera.transform.position);
 
             //camCurrCell.x = camPrevCell.x;
+            //camCurrCell.y = camPrevCell.y;
             //Vector2Int camDelta = camCurrCell - camPrevCell;
             //if (Mathf.Abs(camDelta.x) < 1 || Mathf.Abs(camDelta.y) < 1)
             //{

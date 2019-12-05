@@ -50,6 +50,8 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     {
         Camera camera = Camera.main;
         Vector3 translation = -camera.ScreenToWorldTranslation(screenDelta);
+        //translation.x = 0f;
+        //translation.y = 0f;
         camera.transform.Translate(1f * translation, Space.Self);
     }
 
