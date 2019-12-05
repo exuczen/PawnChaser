@@ -83,18 +83,55 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
             Vector2Int destCell = _tilemap.WorldToCell(worldPoint);
-
-            if (destCell != _selectedCell &&
-                Mathf.Abs(destCell.x - _selectedCell.x) <= 1 && Mathf.Abs(destCell.y - _selectedCell.y) <= 1 &&
-                !_tilemap.GetTile(destCell).Content)
+            //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
+            if (destCell != _selectedCell)
             {
-                Vector3 cellSize = _tilemap.Tilemap.cellSize;
                 Vector3 destCellCenter = _tilemap.GetCellCenterWorld(destCell);
-                if (Mathf.Abs(worldPoint.x - destCellCenter.x) < cellSize.x * 0.4f &&
-                    Mathf.Abs(worldPoint.y - destCellCenter.y) < cellSize.y * 0.4f)
+                Vector2Int deltaXY = destCell - _selectedCell;
+                int absDeltaX = Mathf.Abs(deltaXY.x);
+                int absDeltaY = Mathf.Abs(deltaXY.y);
+                if (absDeltaX > 1 || absDeltaY > 1)
                 {
-                    //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
-                    ShowImageAtPosition(_targetCircle, destCellCenter);
+                    Vector2 ray = destCellCenter - _selectedPawnTransform.position;
+                    float rayAngle = Vector2.SignedAngle(ray, Vector2.up);
+                    int raySign = Math.Sign(rayAngle);
+                    float absRayAngle = Mathf.Abs(rayAngle);
+                    float deltaAngle = 45f;
+                    Vector2Int[] ngbrsDeltaXY = new Vector2Int[] {
+                        new Vector2Int(0, 1) , new Vector2Int(raySign, 1) , new Vector2Int(raySign, 0), new Vector2Int(raySign, -1), new Vector2Int(0, -1)
+                    };
+                    int ngbrIndex = (int)((absRayAngle + deltaAngle / 2f) / deltaAngle);
+                    ngbrIndex = Mathf.Min(ngbrIndex, ngbrsDeltaXY.Length - 1);
+                    deltaXY = ngbrsDeltaXY[ngbrIndex];
+                    destCell = _selectedCell + deltaXY;
+                    if (!_tilemap.GetTile(destCell).Content)
+                    {
+                        destCellCenter = _tilemap.GetCellCenterWorld(destCell);
+                        ShowImageAtPosition(_targetCircle, destCellCenter);
+                    }
+                }
+                else if (!_tilemap.GetTile(destCell).Content)
+                {
+                    Vector3 cellSize = _tilemap.Tilemap.cellSize;
+                    int signDeltaX = Math.Sign(deltaXY.x);
+                    int signDeltaY = Math.Sign(deltaXY.y);
+                    Vector2 cellOffset = 0.4f * cellSize;
+                    if (absDeltaX * absDeltaY == 0)
+                    {
+                        if (absDeltaY * Mathf.Abs(worldPoint.x - destCellCenter.x) < cellOffset.x &&
+                            absDeltaX * Mathf.Abs(worldPoint.y - destCellCenter.y) < cellOffset.y)
+                        {
+                            ShowImageAtPosition(_targetCircle, destCellCenter);
+                        }
+                    }
+                    else
+                    {
+                        if (signDeltaX * (worldPoint.x - destCellCenter.x + signDeltaX * cellOffset.x) >= 0 &&
+                            signDeltaY * (worldPoint.y - destCellCenter.y + signDeltaY * cellOffset.y) >= 0)
+                        {
+                            ShowImageAtPosition(_targetCircle, destCellCenter);
+                        }
+                    }
                 }
             }
         }
