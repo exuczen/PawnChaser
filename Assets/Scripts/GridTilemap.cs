@@ -27,13 +27,13 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void Awake()
     {
+        _tilemap = GetComponent<Tilemap>();
+        _grid = _tilemap.layoutGrid;
         OnAwake();
     }
 
     private void Start()
     {
-        _tilemap = GetComponent<Tilemap>();
-        _grid = _tilemap.layoutGrid;
         _cameraCell = WorldToCell(_camera.transform.position);
         FillMapInView();
         OnShiftEnd();
@@ -83,7 +83,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         return _tiles[tileIndex];
     }
 
-    private void GetHalfViewSize(out int halfYCount, out int halfXCount)
+    private void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
     {
         halfYCount = (int)(_camera.orthographicSize / _grid.cellSize.y);
         halfXCount = (halfYCount * Screen.width / Screen.height) + 2;
@@ -92,7 +92,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void FillMapInView()
     {
-        GetHalfViewSize(out int halfYCount, out int halfXCount);
+        GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
         Vector2Int camCurrTilePos = WorldToCell(_camera.transform.position);
         _tilemap.ClearAllTiles();
         for (int y = -halfYCount; y <= halfYCount; y++)
@@ -107,7 +107,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void Shift(Vector2Int camPrevCell, Vector2Int camCurrCell)
     {
-        GetHalfViewSize(out int halfYCount, out int halfXCount);
+        GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
         int deltaY = camCurrCell.y - camPrevCell.y;
         int deltaX = camCurrCell.x - camPrevCell.x;
         Vector2Int viewSize = new Vector2Int(2 * halfXCount + 1, 2 * halfYCount + 1);

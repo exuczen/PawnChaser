@@ -1,5 +1,6 @@
 ﻿//#define DEBUG_PATHFINDING
 #define DEBUG_SHOW_PATH
+//#define DEBUG_SHOW_DISTANCES
 //#define DEBUG_DISTANCE_INT
 
 using MustHave;
@@ -142,9 +143,9 @@ public class BoardPathfinder : MonoBehaviour
                         float delta = ngbrDeltaXY.x == 0 || ngbrDeltaXY.y == 0 ? 1f : SQRT2;
 #endif
                         ngbrNode.distance = Mathf.Min(ngbrNode.distance, node.distance + delta);
-
+#if DEBUG_SHOW_DISTANCES
                         SetTileMeshText(ngbrXY + bounds.Min, ngbrNode.distance.ToString("F1"));
-
+#endif
                         if (ngbrXY == targetXY)
                         {
                             nextNodesXY.Clear();

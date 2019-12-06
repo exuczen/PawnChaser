@@ -7,7 +7,7 @@ using MustHave.Utilities;
 using System;
 using UnityEngine.UI;
 
-public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Image _raycastBlocker = default;
@@ -21,9 +21,32 @@ public class BoardTouchHandler : MonoBehaviour, IPointerDownHandler, IPointerUpH
     private Vector2Int _selectedCell = default;
     private Coroutine _movePawnRoutine = default;
 
-    private void Awake()
+    protected override void Awake()
     {
         _board = _tilemap.GetComponentInParent<Board>();
+    }
+
+    protected override void Start()
+    {
+        SetUIComponentsSize();
+    }
+
+    protected override void OnRectTransformDimensionsChange()
+    {
+        SetUIComponentsSize();
+    }
+
+    private void SetUIComponentsSize()
+    {
+        if (Camera.main && _tilemap.Tilemap)
+        {
+            Vector2 screenImageSize = transform.GetComponent<Image>().rectTransform.rect.size;
+            float viewTilesYCount = 2f * Camera.main.orthographicSize / _tilemap.Tilemap.cellSize.y;
+            float circleScreenWidth = screenImageSize.y / viewTilesYCount;
+            float circleScale = 2.3f;
+            _selectionCircle.rectTransform.sizeDelta = Vector2.one * circleScreenWidth * circleScale;
+            _targetCircle.rectTransform.sizeDelta = _selectionCircle.rectTransform.sizeDelta;
+        }
     }
 
     private Vector3 GetTouchRayIntersectionWithBoard(Vector3 touchPos)

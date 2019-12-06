@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
@@ -53,9 +54,11 @@ public class Board : MonoBehaviour
             pawnTransform.position = Vector3.Lerp(begPos, endPos, shift);
         });
         pawnTransform.position = endPos;
-
-        _tilemap.GetTile(pawnCell).Content = null;
-        _tilemap.GetTile(destCell).Content = pawnTransform;
+        BoardTile tile;
+        if (tile = _tilemap.GetTile(pawnCell))
+            tile.Content = null;
+        if (tile = _tilemap.GetTile(destCell))
+            tile.Content = pawnTransform;
 
         onEnd?.Invoke();
     }
