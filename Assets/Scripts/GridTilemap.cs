@@ -34,9 +34,12 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void Start()
     {
-        _cameraCell = WorldToCell(_camera.transform.position);
-        FillMapInView();
-        OnShiftEnd();
+        if (EditorApplicationUtils.ApplicationIsPlaying)
+        {
+            _cameraCell = WorldToCell(_camera.transform.position);
+            FillMapInView();
+            OnShiftEnd();
+        }
     }
 
     public Vector2Int WorldToCell(Vector3 worldPos)

@@ -132,7 +132,6 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         {
             TranslateCamera(eventData.delta);
         }
-
     }
 
     public void OnEndDrag(PointerEventData eventData)

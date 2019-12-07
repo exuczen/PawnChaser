@@ -3,11 +3,15 @@ using MustHave.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
+    [SerializeField, HideInInspector] private string _levelFileNamePrefix = default;
+    [SerializeField, HideInInspector] private int _levelIndex = default;
+
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Transform _pawnsContainer = default;
     [SerializeField] private Transform _targetsContainer = default;
@@ -19,6 +23,8 @@ public class Board : MonoBehaviour
     public Transform PawnsContainer { get => _pawnsContainer; }
     public Transform TargetsContainer { get => _targetsContainer; }
     public BoardTilemap Tilemap { get => _tilemap; set => _tilemap = value; }
+    public string LevelFileNamePrefix { get => _levelFileNamePrefix; set => _levelFileNamePrefix = value; }
+    public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
 
     private void Start()
     {
@@ -61,5 +67,11 @@ public class Board : MonoBehaviour
             tile.Content = pawnTransform;
 
         onEnd?.Invoke();
+    }
+
+    public void SaveBoardLevelToJson()
+    {
+        BoardLevel boardLevel = new BoardLevel(this);
+        boardLevel.SaveToJson(_levelFileNamePrefix + _levelIndex + ".dat");
     }
 }
