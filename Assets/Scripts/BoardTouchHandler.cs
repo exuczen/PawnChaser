@@ -9,21 +9,23 @@ using UnityEngine.UI;
 
 public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [SerializeField] private BoardTilemap _tilemap = default;
+    [SerializeField] private Board _board = default;
     [SerializeField] private Image _raycastBlocker = default;
     [SerializeField] private Image _selectionCircle = default;
     [SerializeField] private Image _targetCircle = default;
 
     //[SerializeField] private Transform _marker = default;
 
-    private Board _board = default;
+    private BoardTilemap _tilemap = default;
     private Transform _selectedPawnTransform = default;
     private Vector2Int _selectedCell = default;
     private Coroutine _movePawnRoutine = default;
 
+    public Board Board { get => _board; }
+
     protected override void Awake()
     {
-        _board = _tilemap.GetComponentInParent<Board>();
+        _tilemap = _board.Tilemap;
     }
 
     protected override void Start()
@@ -38,7 +40,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
 
     private void SetUIComponentsSize()
     {
-        if (Camera.main && _tilemap.Tilemap)
+        if (Camera.main && _tilemap && _tilemap.Tilemap)
         {
             Vector2 screenImageSize = transform.GetComponent<Image>().rectTransform.rect.size;
             float viewTilesYCount = 2f * Camera.main.orthographicSize / _tilemap.Tilemap.cellSize.y;

@@ -26,11 +26,17 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     protected override void OnShiftEnd()
     {
-        foreach (Transform pawnTransform in _pawnsContainer)
+        SetTilesContent(_pawnsContainer);
+        SetTilesContent(_targetsContainer);
+    }
+
+    private void SetTilesContent(Transform contentContainer)
+    {
+        foreach (Transform child in contentContainer)
         {
-            BoardTile boardTile = GetTile(pawnTransform.position);
+            BoardTile boardTile = GetTile(child.position);
             if (boardTile)
-                boardTile.Content = pawnTransform;
+                boardTile.Content = child;
         }
     }
 

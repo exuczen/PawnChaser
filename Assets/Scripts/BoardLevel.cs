@@ -13,11 +13,6 @@ using UnityEngine;
 //    EnemyTarget
 //}
 
-public static class BoardLevels
-{
-    public static readonly string FolderPath = Path.Combine(Application.dataPath, "Resources");
-}
-
 [Serializable]
 public class BoardLevel
 {
@@ -25,6 +20,15 @@ public class BoardLevel
     [SerializeField] private Vector2Int[] _playerTargetsXY = default;
     [SerializeField] private Vector2Int[] _enemyPawnsXY = default;
     [SerializeField] private Vector2Int[] _enemyTargetsXY = default;
+
+    public const string FILENAME_PREFIX = "BoardLevel";
+    public const string FILENAME_EXTENSION = ".json";
+    public static readonly string FolderPath = Path.Combine(Application.dataPath, "Resources");
+
+    public Vector2Int[] PlayerPawnsXY { get => _playerPawnsXY; }
+    public Vector2Int[] PlayerTargetsXY { get => _playerTargetsXY; }
+    public Vector2Int[] EnemyPawnsXY { get => _enemyPawnsXY; }
+    public Vector2Int[] EnemyTargetsXY { get => _enemyTargetsXY; }
 
     public BoardLevel(Board board)
     {
@@ -49,7 +53,7 @@ public class BoardLevel
         }
         foreach (Transform child in board.TargetsContainer)
         {
-            PawnTarget pawnTarget = child.GetComponent<PlayerPawnTarget>();
+            PawnTarget pawnTarget = child.GetComponent<PawnTarget>();
             List<Vector2Int> targetsListXY = null;
             if (pawnTarget is PlayerPawnTarget)
             {
@@ -68,12 +72,22 @@ public class BoardLevel
         _enemyTargetsXY = enemyTargetsXY.ToArray();
     }
 
-    public void SaveToJson(string filename)
+    public static string GetFilePath(int levelIndex)
     {
-        if (!Directory.Exists(BoardLevels.FolderPath))
+        return Path.Combine(FolderPath, FILENAME_PREFIX + levelIndex + FILENAME_EXTENSION);
+    }
+
+    public void SaveToJson(int levelIndex)
+    {
+        if (!Directory.Exists(FolderPath))
         {
-            Directory.CreateDirectory(BoardLevels.FolderPath);
+            Directory.CreateDirectory(FolderPath);
         }
-        JsonUtils.SaveToJson(this, Path.Combine(BoardLevels.FolderPath, filename));
+        JsonUtils.SaveToJson(this, GetFilePath(levelIndex));
+    }
+
+    public static BoardLevel LoadFromJson(int levelIndex)
+    {
+        return JsonUtils.LoadFromJson<BoardLevel>(GetFilePath(levelIndex));
     }
 }

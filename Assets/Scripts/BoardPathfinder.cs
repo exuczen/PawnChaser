@@ -46,6 +46,12 @@ public class BoardPathfinder : MonoBehaviour
         _tilemap = board.Tilemap;
     }
 
+    public void ClearSprites()
+    {
+        _tileTextsContainer.transform.DestroyAllChildren();
+        _pathSpritesContainer.DestroyAllChildren();
+    }
+
     public void FindPath(Pawn pawn, PawnTarget target, Action<List<Vector2Int>> onEnd)
     {
         Bounds2Int bounds = _tilemap.GetPawnsCellBounds();
@@ -59,8 +65,7 @@ public class BoardPathfinder : MonoBehaviour
         ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
         begNode.distance = 0f;
 
-        _tileTextsContainer.transform.DestroyAllChildren();
-        _pathSpritesContainer.DestroyAllChildren();
+        ClearSprites();
 
 #if DEBUG_PATHFINDING
         if (_updateCellNodesRoutine != null)
