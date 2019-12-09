@@ -10,14 +10,14 @@ using UnityEngine.UI;
 public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [SerializeField] private Board _board = default;
-    [SerializeField] private Image _raycastBlocker = default;
+    //[SerializeField] private Image _raycastBlocker = default;
     [SerializeField] private Image _selectionCircle = default;
     [SerializeField] private Image _targetCircle = default;
 
     //[SerializeField] private Transform _marker = default;
 
     private BoardTilemap _tilemap = default;
-    private Transform _selectedPawnTransform = default;
+    private PlayerPawn _selectedPawn = default;
     private Vector2Int _selectedCell = default;
     private Coroutine _movePawnRoutine = default;
 
@@ -66,10 +66,10 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         return worldPoint;
     }
 
-    private void SetInputEnabled(bool enabled)
-    {
-        _raycastBlocker.gameObject.SetActive(!enabled);
-    }
+    //private void SetInputEnabled(bool enabled)
+    //{
+    //    _raycastBlocker.gameObject.SetActive(!enabled);
+    //}
 
     private void TranslateCamera(Vector2 screenDelta)
     {
@@ -80,14 +80,15 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         camera.transform.Translate(1f * translation, Space.Self);
     }
 
-    private IEnumerator MovePawnRoutine(Transform pawnTransform, Vector2Int destCell)
+    private IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell)
     {
-        SetInputEnabled(false);
-        yield return _board.MovePawnRoutine(pawnTransform, destCell, () => {
+        EventSystem currentEventSystem = EventSystem.current;
+        currentEventSystem.enabled = false;
+        yield return _board.MovePawnRoutine(pawn, destCell, () => {
             _selectedCell = destCell;
             _board.MoveEnemyPawn(() => {
                 _movePawnRoutine = null;
-                SetInputEnabled(true);
+                currentEventSystem.enabled = true;
             });
         });
     }
@@ -103,7 +104,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         {
             return;
         }
-        if (_selectedPawnTransform)
+        if (_selectedPawn)
         {
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
@@ -111,14 +112,14 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
             //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
             if (destCell != _selectedCell)
             {
-                Vector2 ray = worldPoint - _selectedPawnTransform.position;
+                Vector2 ray = worldPoint - _selectedPawn.transform.position;
                 float rayAngle = Vector2.SignedAngle(ray, Vector2.up);
                 int raySign = Math.Sign(rayAngle);
                 float absRayAngle = Mathf.Abs(rayAngle);
                 float deltaAngle = 45f;
                 Vector2Int[] ngbrsDeltaXY = new Vector2Int[] {
-                        new Vector2Int(0, 1) , new Vector2Int(raySign, 1) , new Vector2Int(raySign, 0), new Vector2Int(raySign, -1), new Vector2Int(0, -1)
-                    };
+                    new Vector2Int(0, 1) , new Vector2Int(raySign, 1) , new Vector2Int(raySign, 0), new Vector2Int(raySign, -1), new Vector2Int(0, -1)
+                };
                 int ngbrIndex = (int)((absRayAngle + deltaAngle / 2f) / deltaAngle);
                 ngbrIndex = Mathf.Min(ngbrIndex, ngbrsDeltaXY.Length - 1);
                 Vector2Int deltaXY = ngbrsDeltaXY[ngbrIndex];
@@ -150,10 +151,9 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
             BoardTile tile = _tilemap.GetTile(worldPoint, out Vector2Int cell);
             if (tile)
             {
-                if (tile.Content && tile.Content.GetComponent<Pawn>())
+                if (tile.Content && (_selectedPawn = tile.Content.GetComponent<PlayerPawn>()))
                 {
-                    _selectedPawnTransform = tile.Content;
-                    ShowImageAtPosition(_selectionCircle, _selectedPawnTransform.position);
+                    ShowImageAtPosition(_selectionCircle, _selectedPawn.transform.position);
                 }
                 _selectedCell = cell;
                 Debug.Log(GetType() + ".OnPonterDown: " + _selectedCell);
@@ -163,15 +163,15 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (_selectedPawnTransform && _targetCircle.gameObject.activeSelf)
+        if (_selectedPawn && _targetCircle.gameObject.activeSelf)
         {
             Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
             Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
-            _movePawnRoutine = StartCoroutine(MovePawnRoutine(_selectedPawnTransform, destCell));
+            _movePawnRoutine = StartCoroutine(MovePawnRoutine(_selectedPawn, destCell));
         }
         _targetCircle.gameObject.SetActive(false);
         _selectionCircle.gameObject.SetActive(false);
-        _selectedPawnTransform = null;
+        _selectedPawn = null;
     }
 
     private void ShowImageAtPosition(Image image, Vector3 worldPoint)

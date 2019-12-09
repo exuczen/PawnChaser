@@ -21,6 +21,7 @@ public class Board : MonoBehaviour
     private EnemyPawnTarget _enemyTarget = default;
     private EnemyPawn _enemyPawn = default;
     private BoardPathfinder _pathfinder = default;
+    private bool _pawnsPositionsSaved = default;
 
     public Transform PawnsContainer { get => _pawnsContainer; }
     public Transform TargetsContainer { get => _targetsContainer; }
@@ -32,42 +33,55 @@ public class Board : MonoBehaviour
         _enemyPawn = _pawnsContainer.GetComponentInChildren<EnemyPawn>();
         _enemyTarget = _targetsContainer.GetComponentInChildren<EnemyPawnTarget>();
         _pathfinder = GetComponent<BoardPathfinder>();
+
+        SavePawnsPositions();
     }
 
     public void MoveEnemyPawn(Action onEnd)
     {
+        void onEnd2()
+        {
+            SavePawnsPositions();
+            onEnd?.Invoke();
+        }
         _pathfinder.FindPath(_enemyPawn, _enemyTarget, path => {
             if (path.Count > 0)
             {
                 Vector2Int destCell = path.PickLastElement();
-                StartCoroutine(MovePawnRoutine(_enemyPawn.transform, destCell, onEnd));
+                StartCoroutine(MovePawnRoutine(_enemyPawn, destCell, onEnd2));
             }
             else
             {
-                onEnd?.Invoke();
+                onEnd2();
             }
         });
     }
 
-    public IEnumerator MovePawnRoutine(Transform pawnTransform, Vector2Int destCell, Action onEnd = null)
+    public IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell, Action onEnd = null)
     {
-        Vector2Int pawnCell = _tilemap.WorldToCell(pawnTransform.position);
-        Vector3 begPos = pawnTransform.position;
-        Vector3 endPos = _tilemap.GetCellCenterWorld(destCell);
+        yield return pawn.MoveRoutine(_tilemap, destCell, onEnd);
+    }
 
-        float duration = 0.3f;
-        yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
-            float shift = Maths.GetTransition(TransitionType.COS_IN_PI_RANGE, transition);
-            pawnTransform.position = Vector3.Lerp(begPos, endPos, shift);
-        });
-        pawnTransform.position = endPos;
-        BoardTile tile;
-        if (tile = _tilemap.GetTile(pawnCell))
-            tile.Content = null;
-        if (tile = _tilemap.GetTile(destCell))
-            tile.Content = pawnTransform;
+    private void SavePawnsPositions()
+    {
+        foreach (Transform pawnTransform in _pawnsContainer)
+        {
+            pawnTransform.GetComponent<Pawn>().AddCellPositionToStack(_tilemap);
+        }
+        _pawnsPositionsSaved = true;
+    }
 
-        onEnd?.Invoke();
+    public void SetPawnsPreviousPositions()
+    {
+        if (_pawnsPositionsSaved)
+        {
+            _pawnsPositionsSaved = false;
+            _pathfinder.ClearSprites();
+        }
+        foreach (Transform pawnTransform in _pawnsContainer)
+        {
+            pawnTransform.GetComponent<Pawn>().SetPreviousCellPosition(_tilemap);
+        }
     }
 
     public void SaveBoardLevelToJson()
@@ -106,6 +120,8 @@ public class Board : MonoBehaviour
             }
         }
         _tilemap.ResetTilemap();
+
+        SavePawnsPositions();
     }
 
     public void ResetBoardLevel()

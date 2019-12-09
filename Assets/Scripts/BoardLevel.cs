@@ -23,7 +23,7 @@ public class BoardLevel
 
     public const string FILENAME_PREFIX = "BoardLevel";
     public const string FILENAME_EXTENSION = ".json";
-    public static readonly string FolderPath = Path.Combine(Application.dataPath, "Resources");
+    public static readonly string EditorFolderPath = Path.Combine(Application.dataPath, "Resources");
 
     public Vector2Int[] PlayerPawnsXY { get => _playerPawnsXY; }
     public Vector2Int[] PlayerTargetsXY { get => _playerTargetsXY; }
@@ -72,22 +72,27 @@ public class BoardLevel
         _enemyTargetsXY = enemyTargetsXY.ToArray();
     }
 
-    public static string GetFilePath(int levelIndex)
+    public static string GetEditorFilePath(int levelIndex)
     {
-        return Path.Combine(FolderPath, FILENAME_PREFIX + levelIndex + FILENAME_EXTENSION);
+        return Path.Combine(EditorFolderPath, GetFileName(levelIndex));
+    }
+
+    public static string GetFileName(int levelIndex)
+    {
+        return FILENAME_PREFIX + levelIndex + FILENAME_EXTENSION;
     }
 
     public void SaveToJson(int levelIndex)
     {
-        if (!Directory.Exists(FolderPath))
+        if (!Directory.Exists(EditorFolderPath))
         {
-            Directory.CreateDirectory(FolderPath);
+            Directory.CreateDirectory(EditorFolderPath);
         }
-        JsonUtils.SaveToJson(this, GetFilePath(levelIndex));
+        JsonUtils.SaveToJson(this, GetEditorFilePath(levelIndex));
     }
 
     public static BoardLevel LoadFromJson(int levelIndex)
     {
-        return JsonUtils.LoadFromJson<BoardLevel>(GetFilePath(levelIndex));
+        return JsonUtils.LoadFromJsonFromResources<BoardLevel>(GetFileName(levelIndex));
     }
 }

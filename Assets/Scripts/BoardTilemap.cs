@@ -16,18 +16,18 @@ public class BoardTilemap : GridTilemap<BoardTile>
         _targetsContainer = board.TargetsContainer;
     }
 
+    protected override void OnShiftEnd()
+    {
+        SetTilesContent(_pawnsContainer);
+        SetTilesContent(_targetsContainer);
+    }
+
     protected override BoardTile CreateTile(int x, int y)
     {
         BoardTile tile = Instantiate(_tiles[0]);
         tile.color = Color.Lerp(Color.HSVToRGB(0f, 0f, 0.7f), Color.HSVToRGB(0f, 0f, 0.8f), UnityEngine.Random.Range(0f, 1f));
         //tile.transform = Matrix4x4.Rotate(Quaternion.Euler(0, 0, UnityEngine.Random.Range(0, 4) * 90f));
         return tile;
-    }
-
-    protected override void OnShiftEnd()
-    {
-        SetTilesContent(_pawnsContainer);
-        SetTilesContent(_targetsContainer);
     }
 
     private void SetTilesContent(Transform contentContainer)
