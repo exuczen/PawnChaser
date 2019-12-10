@@ -15,6 +15,7 @@ public class BoardScreen : ScreenScript
     protected override void Awake()
     {
         _board = _boardTouchHandler.Board;
+        _board.BoardScreen = this;
         _optionsButton.onClick.AddListener(OnOptionsButtonClick);
         _undoMovesButton.onClick.AddListener(OnUndoMovesButtonClick);
     }
@@ -23,7 +24,7 @@ public class BoardScreen : ScreenScript
     {
         Canvas.AlertPopup.SetText("")
             .SetButtons(ActionWithText.Create("Reset", () => {
-                _board.ResetBoardLevel();
+                _board.ResetLevel();
             }), ActionWithText.Create("Back", null))
             .Show();
     }
@@ -31,5 +32,25 @@ public class BoardScreen : ScreenScript
     private void OnUndoMovesButtonClick()
     {
         _board.SetPawnsPreviousPositions();
+    }
+
+    public void ShowFailPopup()
+    {
+        Canvas.AlertPopup.ShowWithConfirmButton("Fail", () => {
+            _board.ResetLevel();
+        });
+    }
+
+    public void ShowSuccessPopup()
+    {
+        Canvas.AlertPopup.SetText("Success")
+            .SetButtons(
+                ActionWithText.Create("Next level", () => {
+                    _board.ResetLevel();
+                }),
+                ActionWithText.Create("Menu", () => {
+                    _board.ResetLevel();
+                }))
+            .Show();
     }
 }

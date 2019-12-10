@@ -1,4 +1,6 @@
-﻿using MustHave;
+﻿#define DUBUG_LEVEL
+
+using MustHave.UI;
 using MustHave.Utilities;
 using System;
 using System.Collections;
@@ -22,37 +24,54 @@ public class Board : MonoBehaviour
     private EnemyPawn _enemyPawn = default;
     private BoardPathfinder _pathfinder = default;
     private bool _pawnsPositionsSaved = default;
+    private BoardScreen _boardScreen = default;
 
     public Transform PawnsContainer { get => _pawnsContainer; }
     public Transform TargetsContainer { get => _targetsContainer; }
     public BoardTilemap Tilemap { get => _tilemap; }
     public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
+    public BoardScreen BoardScreen { get => _boardScreen; set => _boardScreen = value; }
 
     private void Start()
     {
         _enemyPawn = _pawnsContainer.GetComponentInChildren<EnemyPawn>();
         _enemyTarget = _targetsContainer.GetComponentInChildren<EnemyPawnTarget>();
         _pathfinder = GetComponent<BoardPathfinder>();
-
+#if DUBUG_LEVEL
+        _tilemap.ResetTilemap();
         SavePawnsPositions();
+#else
+        LoadBoardLevelFromJson(_levelIndex);
+#endif
     }
 
     public void MoveEnemyPawn(Action onEnd)
     {
-        void onEnd2()
+        void OnEnd(bool pathFound, int pathLength)
         {
             SavePawnsPositions();
+            if (pathFound && pathLength <= 1)
+            {
+                _boardScreen.ShowFailPopup();
+            }
+            else if (!pathFound && pathLength == 0)
+            {
+                _boardScreen.ShowSuccessPopup();
+            }
             onEnd?.Invoke();
         }
-        _pathfinder.FindPath(_enemyPawn, _enemyTarget, path => {
+        _pathfinder.FindPath(_enemyPawn, _enemyTarget, (path, pathFound) => {
+            //Debug.Log(GetType() + ".MoveEnemyPawn: pathFound:" + pathFound + " path.Count: " + path.Count);
             if (path.Count > 0)
             {
                 Vector2Int destCell = path.PickLastElement();
-                StartCoroutine(MovePawnRoutine(_enemyPawn, destCell, onEnd2));
+                StartCoroutine(MovePawnRoutine(_enemyPawn, destCell, () => {
+                    OnEnd(pathFound, path.Count);
+                }));
             }
             else
             {
-                onEnd2();
+                OnEnd(pathFound, path.Count);
             }
         });
     }
@@ -84,13 +103,13 @@ public class Board : MonoBehaviour
         }
     }
 
-    public void SaveBoardLevelToJson()
+    public void SaveLevelToJson()
     {
         BoardLevel boardLevel = new BoardLevel(this);
         boardLevel.SaveToJson(_levelIndex);
     }
 
-    public void LoadBoardLevelFromJson(int levelIndex)
+    public void LoadLevelFromJson(int levelIndex)
     {
         BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
         if (boardLevel != null)
@@ -120,13 +139,12 @@ public class Board : MonoBehaviour
             }
         }
         _tilemap.ResetTilemap();
-
         SavePawnsPositions();
     }
 
-    public void ResetBoardLevel()
+    public void ResetLevel()
     {
         _pathfinder.ClearSprites();
-        LoadBoardLevelFromJson(_levelIndex);
+        LoadLevelFromJson(_levelIndex);
     }
 }

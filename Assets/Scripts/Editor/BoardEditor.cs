@@ -18,12 +18,12 @@ public class BoardEditor : Editor
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Save board level"))
         {
-            board.SaveBoardLevelToJson();
+            board.SaveLevelToJson();
             AssetDatabase.Refresh();
         }
         if (GUILayout.Button("Load board level"))
         {
-            board.LoadBoardLevelFromJson(board.LevelIndex);
+            board.LoadLevelFromJson(board.LevelIndex);
         }
         GUILayout.EndHorizontal();
         DrawDefaultInspector();

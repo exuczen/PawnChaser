@@ -22,8 +22,10 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     public Tilemap Tilemap { get => _tilemap; set => _tilemap = value; }
 
     protected abstract T CreateTile(int x, int y);
-    protected abstract void OnShiftEnd();
+    protected abstract void SetTilesContent();
+    protected virtual void OnLateUpdate() { }
     protected virtual void OnAwake() { }
+    protected virtual void OnStart() { }
 
     private void Awake()
     {
@@ -36,7 +38,11 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
     {
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
-            ResetTilemap();
+            OnStart();
+        }
+        else
+        {
+            //ResetTilemap();
         }
     }
 
@@ -46,7 +52,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         _camera.transform.position = cameraPosition;
         _cameraCell = WorldToCell(cameraPosition);
         FillMapInView();
-        OnShiftEnd();
+        SetTilesContent();
     }
 
     public Vector2Int WorldToCell(Vector3 worldPos)
@@ -62,7 +68,12 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     public T GetTile(Vector2Int cell)
     {
-        return GetTile(new Vector3Int(cell.x, cell.y, 0));
+        return GetTile(cell.x, cell.y);
+    }
+
+    public T GetTile(int x, int y)
+    {
+        return GetTile(new Vector3Int(x, y, 0));
     }
 
     public T GetTile(Vector3Int cell)
@@ -93,7 +104,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         return _tiles[tileIndex];
     }
 
-    private void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
+    protected void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
     {
         halfYCount = (int)(_camera.orthographicSize / _grid.cellSize.y);
         halfXCount = (halfYCount * Screen.width / Screen.height) + 2;
@@ -102,17 +113,34 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     private void FillMapInView()
     {
-        GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
-        Vector2Int camCurrTilePos = WorldToCell(_camera.transform.position);
         _tilemap.ClearAllTiles();
-        for (int y = -halfYCount; y <= halfYCount; y++)
+        UpdateTilesInView((x, y) => {
+            Tile tile = CreateTile(x, y);
+            _tilemap.SetTile(new Vector3Int(x, y, 0), tile);
+        }, true);
+    }
+
+    protected void UpdateTiles(int begY, int endY, int begX, int endX, Action<int, int> onUpdate)
+    {
+        for (int y = begY; y <= endY; y++)
         {
-            for (int x = -halfXCount; x <= halfXCount; x++)
+            for (int x = begX; x <= endX; x++)
             {
-                Tile tile = CreateTile(x, y);
-                _tilemap.SetTile(new Vector3Int(camCurrTilePos.x + x, camCurrTilePos.y + y, 0), tile);
+                onUpdate(x, y);
             }
         }
+    }
+
+    protected void UpdateTilesInView(Action<int, int> onUpdate, bool refreshTiles)
+    {
+        Vector2Int camCurrCell = WorldToCell(_camera.transform.position);
+        GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
+        UpdateTiles(-halfYCount + camCurrCell.y, halfYCount + camCurrCell.y,
+                    -halfXCount + camCurrCell.x, halfXCount + camCurrCell.x, (x, y) => {
+                        onUpdate(x, y);
+                    });
+        if (refreshTiles)
+            _tilemap.RefreshAllTiles();
     }
 
     private void Shift(Vector2Int camPrevCell, Vector2Int camCurrCell)
@@ -122,16 +150,6 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         int deltaX = camCurrCell.x - camPrevCell.x;
         Vector2Int viewSize = new Vector2Int(2 * halfXCount + 1, 2 * halfYCount + 1);
 
-        void UpdateTiles(int begY, int endY, int begX, int endX, Action<int, int> onUpdate)
-        {
-            for (int y = begY; y <= endY; y++)
-            {
-                for (int x = begX; x <= endX; x++)
-                {
-                    onUpdate(x, y);
-                }
-            }
-        }
         //Debug.Log(GetType() + ".Shift: " + deltaX + " " + deltaY);
         if (deltaY != 0)
         {
@@ -199,7 +217,6 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             });
             if (addedCols > 0)
             {
-
                 begX = deltaX > 0 ? -halfXCount : halfXCount - addedCols;
                 endX = begX + addedCols;
                 UpdateTiles(-halfYCount, halfYCount, begX, endX, (x, y) => {
@@ -208,7 +225,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 });
             }
         }
-        OnShiftEnd();
+        SetTilesContent();
     }
 
     private void LateUpdate()
@@ -231,6 +248,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
                 Shift(camPrevCell, camCurrCell);
             }
             _cameraCell = camCurrCell;
+
+            OnLateUpdate();
         }
     }
 }
