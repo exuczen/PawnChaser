@@ -7,14 +7,16 @@ using UnityEngine.Tilemaps;
 
 public class BoardTilemap : GridTilemap<BoardTile>
 {
-    private Transform _pawnsContainer = default;
-    private Transform _targetsContainer = default;
+    private Transform _playerPawnsContainer = default;
+    private Transform _enemyPawnsContainer = default;
+    private Transform _enemyTargetsContainer = default;
 
     protected override void OnAwake()
     {
         Board board = GetComponentInParent<Board>();
-        _pawnsContainer = board.PawnsContainer;
-        _targetsContainer = board.TargetsContainer;
+        _playerPawnsContainer = board.PlayerPawnsContainer;
+        _enemyPawnsContainer = board.EnemyPawnsContainer;
+        _enemyTargetsContainer = board.EnemyTargetsContainer;
     }
 
     protected override void OnStart()
@@ -23,8 +25,9 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     protected override void SetTilesContent()
     {
-        SetTilesContent(_pawnsContainer);
-        SetTilesContent(_targetsContainer);
+        SetTilesContent(_playerPawnsContainer);
+        SetTilesContent(_enemyPawnsContainer);
+        SetTilesContent(_enemyTargetsContainer);
     }
 
     protected override BoardTile CreateTile(int x, int y)
@@ -37,11 +40,14 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     private void SetTilesContent(Transform contentContainer)
     {
-        foreach (Transform child in contentContainer)
+        if (contentContainer)
         {
-            BoardTile boardTile = GetTile(child.position);
-            if (boardTile)
-                boardTile.Content = child;
+            foreach (Transform child in contentContainer)
+            {
+                BoardTile boardTile = GetTile(child.position);
+                if (boardTile)
+                    boardTile.Content = child;
+            }
         }
     }
 
@@ -56,13 +62,16 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return new Bounds2Int(min, max - min + Vector2Int.one);
     }
 
-    public Bounds2Int GetPawnsCellBounds()
+    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY, bool playerPawns, bool enemyPawns)
     {
-        Vector2Int min = new Vector2Int(int.MaxValue, int.MaxValue);
-        Vector2Int max = new Vector2Int(int.MinValue, int.MinValue);
-
-        Bounds2Int bounds = GetChildrenCellBounds(min, max, _pawnsContainer);
-        bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _targetsContainer);
+        Vector2Int min = initXY;
+        Vector2Int max = initXY;
+        Bounds2Int bounds = new Bounds2Int(initXY, Vector2Int.one);
+        if (playerPawns)
+            bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _playerPawnsContainer);
+        if (enemyPawns)
+            bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _enemyPawnsContainer);
+        bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _enemyTargetsContainer);
         bounds.Min -= Vector2Int.one;
         bounds.Max += Vector2Int.one;
         return bounds;

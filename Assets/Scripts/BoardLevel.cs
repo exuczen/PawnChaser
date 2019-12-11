@@ -36,35 +36,21 @@ public class BoardLevel
         List<Vector2Int> playerTargetsXY = new List<Vector2Int>();
         List<Vector2Int> enemyPawnsXY = new List<Vector2Int>();
         List<Vector2Int> enemyTargetsXY = new List<Vector2Int>();
-        foreach (Transform child in board.PawnsContainer)
+        foreach (Transform child in board.PlayerPawnsContainer)
         {
-            Pawn pawn = child.GetComponent<Pawn>();
-            List<Vector2Int> pawnsListXY = null;
-            if (pawn is PlayerPawn)
-            {
-                pawnsListXY = playerPawnsXY;
-            }
-            else if (pawn is EnemyPawn)
-            {
-                pawnsListXY = enemyPawnsXY;
-            }
-            if (pawnsListXY != null)
-                pawnsListXY.Add(board.Tilemap.WorldToCell(child.position));
+            playerPawnsXY.Add(board.Tilemap.WorldToCell(child.position));
         }
-        foreach (Transform child in board.TargetsContainer)
+        foreach (Transform child in board.PlayerTargetsContainer)
         {
-            PawnTarget pawnTarget = child.GetComponent<PawnTarget>();
-            List<Vector2Int> targetsListXY = null;
-            if (pawnTarget is PlayerPawnTarget)
-            {
-                targetsListXY = playerTargetsXY;
-            }
-            else if (pawnTarget is EnemyPawnTarget)
-            {
-                targetsListXY = enemyTargetsXY;
-            }
-            if (targetsListXY != null)
-                targetsListXY.Add(board.Tilemap.WorldToCell(child.position));
+            playerTargetsXY.Add(board.Tilemap.WorldToCell(child.position));
+        }
+        foreach (Transform child in board.EnemyPawnsContainer)
+        {
+            enemyPawnsXY.Add(board.Tilemap.WorldToCell(child.position));
+        }
+        foreach (Transform child in board.EnemyTargetsContainer)
+        {
+            enemyTargetsXY.Add(board.Tilemap.WorldToCell(child.position));
         }
         _playerPawnsXY = playerPawnsXY.ToArray();
         _playerTargetsXY = playerTargetsXY.ToArray();

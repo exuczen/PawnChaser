@@ -8,6 +8,7 @@ public class BoardScreen : ScreenScript
 {
     [SerializeField] private Button _optionsButton = default;
     [SerializeField] private Button _undoMovesButton = default;
+    [SerializeField] private Button _skipMoveButton = default;
     [SerializeField] private BoardTouchHandler _boardTouchHandler = default;
 
     private Board _board = default;
@@ -17,7 +18,8 @@ public class BoardScreen : ScreenScript
         _board = _boardTouchHandler.Board;
         _board.BoardScreen = this;
         _optionsButton.onClick.AddListener(OnOptionsButtonClick);
-        _undoMovesButton.onClick.AddListener(OnUndoMovesButtonClick);
+        _undoMovesButton.onClick.AddListener(_board.SetPawnsPreviousPositions);
+        _skipMoveButton.onClick.AddListener(_board.SkipPlayerMove);
     }
 
     private void OnOptionsButtonClick()
@@ -27,11 +29,6 @@ public class BoardScreen : ScreenScript
                 _board.ResetLevel();
             }), ActionWithText.Create("Back", null))
             .Show();
-    }
-
-    private void OnUndoMovesButtonClick()
-    {
-        _board.SetPawnsPreviousPositions();
     }
 
     public void ShowFailPopup()
@@ -46,7 +43,7 @@ public class BoardScreen : ScreenScript
         Canvas.AlertPopup.SetText("Success")
             .SetButtons(
                 ActionWithText.Create("Next level", () => {
-                    _board.ResetLevel();
+                    _board.LoadNextLevel();
                 }),
                 ActionWithText.Create("Menu", () => {
                     _board.ResetLevel();

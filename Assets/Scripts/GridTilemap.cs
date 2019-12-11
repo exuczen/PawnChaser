@@ -1,10 +1,16 @@
-﻿//#define DEBUG_ADDED_TILES
+﻿//#define EDITOR_RELOAD_ON_START
+//#define DEBUG_ADDED_TILES
 
 using MustHave.Utilities;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+#endif
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(Tilemap))]
@@ -40,10 +46,13 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
         {
             OnStart();
         }
+#if UNITY_EDITOR && EDITOR_RELOAD_ON_START
         else
         {
-            //ResetTilemap();
+            ResetTilemap();
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         }
+#endif
     }
 
     public void ResetTilemap()
@@ -106,6 +115,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
 
     protected void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
     {
+        //Debug.Log(GetType() + ".GetHalfViewSizeXY: " + Screen.width + " " + Screen.height);
         halfYCount = (int)(_camera.orthographicSize / _grid.cellSize.y);
         halfXCount = (halfYCount * Screen.width / Screen.height) + 2;
         halfYCount += 1;

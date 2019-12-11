@@ -22,7 +22,8 @@ public class BoardPathfinder : MonoBehaviour
 #if DEBUG_PATHFINDING
     private Coroutine _updateCellNodesRoutine = default;
 #endif
-    private Transform _pawnsContainer = default;
+    private Transform _playerPawnsContainer = default;
+    private Transform _enemyPawnsContainer = default;
     private BoardTilemap _tilemap = default;
 
     private readonly Vector2Int[] _cellNgbrsDeltaXY = new Vector2Int[]
@@ -42,7 +43,8 @@ public class BoardPathfinder : MonoBehaviour
     private void Awake()
     {
         Board board = GetComponentInParent<Board>();
-        _pawnsContainer = board.PawnsContainer;
+        _playerPawnsContainer = board.PlayerPawnsContainer;
+        _enemyPawnsContainer = board.EnemyTargetsContainer;
         _tilemap = board.Tilemap;
     }
 
@@ -52,41 +54,69 @@ public class BoardPathfinder : MonoBehaviour
         _pathSpritesContainer.DestroyAllChildren();
     }
 
-    public void FindPath(Pawn pawn, PawnTarget target, Action<List<Vector2Int>, bool> onEnd)
+    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, bool showPath)
     {
-        Bounds2Int bounds = _tilemap.GetPawnsCellBounds();
-        var nodes = CreateCellNodes(bounds);
-        Vector2Int begXY = _tilemap.WorldToCell(pawn.transform.position) - bounds.Min;
-        Vector2Int endXY = _tilemap.WorldToCell(target.transform.position) - bounds.Min;
-
-        //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
-        //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
-
-        ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
-        begNode.distance = 0f;
-
-        ClearSprites();
-
-#if DEBUG_PATHFINDING
-        if (_updateCellNodesRoutine != null)
+        if (begXY == endXY)
         {
-            StopCoroutine(_updateCellNodesRoutine);
-            ClearTilesMeshTexts(bounds);
+            path = new List<Vector2Int>();
+            return true;
         }
-        _updateCellNodesRoutine = StartCoroutine(UpdateCellNodesRoutine(nodes, bounds, begXY, endXY, (targetReached) => {
-            ClearTilesMeshTexts(bounds);
-            onEnd(CreatePath(nodes, bounds, begXY, endXY), targetReached);
-        }));
-#else
-        HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
-        bool targetReached = false;
-        while (nodesXY.Count > 0)
+        else
         {
-            nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, out targetReached);
+            var nodes = CreateCellNodes(bounds);
+            begXY -= bounds.Min;
+            endXY -= bounds.Min;
+            //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
+            //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
+            ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
+            begNode.distance = 0f;
+
+            ClearSprites();
+
+            HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
+            bool targetReached = false;
+            while (nodesXY.Count > 0)
+            {
+                nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, out targetReached);
+            }
+            ClearTilesMeshTexts(bounds);
+            path = CreatePath(nodes, bounds, begXY, endXY);
+            if (showPath)
+                CreatePathSprites(path);
+            return targetReached;
         }
-        ClearTilesMeshTexts(bounds);
-        onEnd(CreatePath(nodes, bounds, begXY, endXY), targetReached);
-#endif
+    }
+
+    public bool FindPath(TileContent begTileContent, TileContent endTileContent, out List<Vector2Int> path)
+    {
+        Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
+        Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
+        if (begXY == endXY)
+        {
+            path = new List<Vector2Int>();
+            return true;
+        }
+        else
+        {
+            Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, true, true);
+            return FindPath(begXY, endXY, bounds, out path, true);
+        }
+    }
+
+    public bool FindPathToBoundsMin(TileContent begTileContent, out List<Vector2Int> path)
+    {
+        Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
+        Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, true, false);
+        Vector2Int endXY = bounds.Min;
+        if (begXY == endXY)
+        {
+            path = new List<Vector2Int>();
+            return true;
+        }
+        else
+        {
+            return FindPath(begXY, endXY, bounds, out path, false);
+        }
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
@@ -96,9 +126,6 @@ public class BoardPathfinder : MonoBehaviour
         if (endNode.distance < float.MaxValue / 2f)
         {
             path = GetPath(nodes, bounds, begXY, endXY);
-#if DEBUG_SHOW_PATH
-            CreatePathSprites(path);
-#endif
         }
         return path;
     }
@@ -110,7 +137,7 @@ public class BoardPathfinder : MonoBehaviour
         {
             nodes[i].distance = float.MaxValue;
         }
-        foreach (Transform pawnTransform in _pawnsContainer)
+        foreach (Transform pawnTransform in _playerPawnsContainer)
         {
             Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
             Vector2Int xy = cell - bounds.Min;
@@ -193,7 +220,7 @@ public class BoardPathfinder : MonoBehaviour
             path.Add(nodeXY);
             while (nodeXY != begXY)
             {
-                nodeXY = GetMinDistanceCellNgbrNodeXY(nodes, nodeXY, bounds);
+                nodeXY = GetMinDistanceNgbrCellNodeXY(nodes, nodeXY, bounds);
                 path.Add(nodeXY);
             }
             if (path.Count > 1)
@@ -208,7 +235,7 @@ public class BoardPathfinder : MonoBehaviour
         return path;
     }
 
-    private Vector2Int GetMinDistanceCellNgbrNodeXY(CellNode[] nodes, Vector2Int nodeXY, Bounds2Int bounds)
+    private Vector2Int GetMinDistanceNgbrCellNodeXY(CellNode[] nodes, Vector2Int nodeXY, Bounds2Int bounds)
     {
         float minDistance = float.MaxValue;
         Vector2Int minDistNgbrXY = default;

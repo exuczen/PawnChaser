@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [CustomEditor(typeof(Board))]
 public class BoardEditor : Editor
@@ -13,6 +15,7 @@ public class BoardEditor : Editor
         GUILayout.BeginHorizontal();
         GUILayout.Label("Board level index:");
         //board.LevelFileNamePrefix = GUILayout.TextField(board.LevelFileNamePrefix);
+        int prevLevelIndex = board.LevelIndex;
         board.LevelIndex = EditorGUILayout.IntField(board.LevelIndex);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
@@ -27,5 +30,9 @@ public class BoardEditor : Editor
         }
         GUILayout.EndHorizontal();
         DrawDefaultInspector();
+        bool dirty = false;
+        dirty |= prevLevelIndex != board.LevelIndex;
+        if (dirty)
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }
 }

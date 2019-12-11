@@ -6,14 +6,9 @@ using System;
 using MustHave;
 using UnityEngine.Tilemaps;
 
-public class Pawn : MonoBehaviour
+public class Pawn : TileContent
 {
     private List<Vector2Int> _cellsStack = new List<Vector2Int>();
-
-    public T CreateInstance<T>(Vector2Int cellXY, BoardTilemap tilemap, Transform parent) where T : Pawn
-    {
-        return Instantiate(this as T, tilemap.GetCellCenterWorld(cellXY), Quaternion.identity, parent);
-    }
 
     public void SetPreviousCellPosition(BoardTilemap tilemap)
     {
