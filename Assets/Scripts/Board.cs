@@ -72,16 +72,18 @@ public class Board : MonoBehaviour
         onEnd?.Invoke();
     }
 
-    public void MoveEnemyPawn(Action onEnd)
+    public void MoveEnemyPawn(Action onEnd, bool savePawnsPositionsOnHold)
     {
-        bool pathFound = _pathfinder.FindPath(_enemyPawn, _enemyTarget, out List<Vector2Int> path);
+        bool pathFound = _pathfinder.FindPath(_enemyPawn, _enemyTarget, out List<Vector2Int> path,
+            _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
         if (pathFound)
             StartCoroutine(MoveEnemyPawnRoutine(path, onEnd));
         else
         {
-            SavePawnsPositions();
-            bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(_enemyTarget, out path);
-            bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(_enemyPawn, out path) : true;
+            if (savePawnsPositionsOnHold)
+                SavePawnsPositions();
+            bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(_enemyTarget, out path, _playerPawnsContainer, _enemyTargetsContainer);
+            bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(_enemyPawn, out path, _playerPawnsContainer) : true;
             if (enemySurrounded)
             {
                 this.StartCoroutineActionAfterTime(() => {
@@ -107,7 +109,7 @@ public class Board : MonoBehaviour
         currentEventSystem.enabled = false;
         MoveEnemyPawn(() => {
             currentEventSystem.enabled = true;
-        });
+        }, false);
     }
 
     private void SavePawnsPositions()

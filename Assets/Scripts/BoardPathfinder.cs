@@ -54,7 +54,7 @@ public class BoardPathfinder : MonoBehaviour
         _pathSpritesContainer.DestroyAllChildren();
     }
 
-    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, bool showPath)
+    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, bool showPath, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -63,13 +63,16 @@ public class BoardPathfinder : MonoBehaviour
         }
         else
         {
-            var nodes = CreateCellNodes(bounds);
+            var nodes = CreateCellNodes(bounds, contentContainers);
             begXY -= bounds.Min;
             endXY -= bounds.Min;
             //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
             //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
             ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
+            ref CellNode endNode = ref nodes[GetCellNodeIndex(endXY, bounds.Size)];
             begNode.distance = 0f;
+            begNode.locked = false;
+            endNode.locked = false;
 
             ClearSprites();
 
@@ -87,62 +90,68 @@ public class BoardPathfinder : MonoBehaviour
         }
     }
 
-    public bool FindPath(TileContent begTileContent, TileContent endTileContent, out List<Vector2Int> path)
+    public bool FindPath(TileContent begTileContent, TileContent endTileContent, out List<Vector2Int> path, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
-        if (begXY == endXY)
-        {
-            path = new List<Vector2Int>();
-            return true;
-        }
-        else
-        {
-            Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, true, true);
-            return FindPath(begXY, endXY, bounds, out path, true);
-        }
+        Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
+        return FindPath(begXY, endXY, bounds, out path, true, contentContainers);
     }
 
-    public bool FindPathToBoundsMin(TileContent begTileContent, out List<Vector2Int> path)
+    public bool FindPathToBoundsMin(TileContent begTileContent, out List<Vector2Int> path, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
-        Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, true, false);
+        Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
-        if (begXY == endXY)
-        {
-            path = new List<Vector2Int>();
-            return true;
-        }
-        else
-        {
-            return FindPath(begXY, endXY, bounds, out path, false);
-        }
+        return FindPath(begXY, endXY, bounds, out path, false, contentContainers);
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
     {
         List<Vector2Int> path = new List<Vector2Int>();
         CellNode endNode = nodes[GetCellNodeIndex(endXY, bounds.Size)];
-        if (endNode.distance < float.MaxValue / 2f)
+        if (endNode.distance < float.MaxValue / 2f && begXY != endXY)
         {
-            path = GetPath(nodes, bounds, begXY, endXY);
+            //Debug.Log(GetType() + ".GetPath: " + begXY + "->" + endXY);
+            ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
+            bool begNodeLocked = begNode.locked;
+            begNode.locked = false;
+
+            Vector2Int nodeXY = endXY;
+            path.Add(nodeXY);
+            while (nodeXY != begXY)
+            {
+                nodeXY = GetMinDistanceNgbrCellNodeXY(nodes, nodeXY, bounds);
+                path.Add(nodeXY);
+            }
+            if (path.Count > 1)
+                path.RemoveAt(path.Count - 1);
+            for (int i = 0; i < path.Count; i++)
+            {
+                path[i] += bounds.Min;
+                //Debug.Log(GetType() + ".GetPath: " + path[i]);
+            }
+            begNode.locked = begNodeLocked;
         }
         return path;
     }
 
-    private CellNode[] CreateCellNodes(Bounds2Int bounds)
+    private CellNode[] CreateCellNodes(Bounds2Int bounds, params Transform[] contentContainers)
     {
         var nodes = new CellNode[bounds.Size.x * bounds.Size.y];
         for (int i = 0; i < nodes.Length; i++)
         {
             nodes[i].distance = float.MaxValue;
         }
-        foreach (Transform pawnTransform in _playerPawnsContainer)
+        foreach (Transform container in contentContainers)
         {
-            Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
-            Vector2Int xy = cell - bounds.Min;
-            int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
-            nodes[nodeIndex].locked = true;
+            foreach (Transform pawnTransform in container)
+            {
+                Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
+                Vector2Int xy = cell - bounds.Min;
+                int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
+                nodes[nodeIndex].locked = true;
+            }
         }
         return nodes;
     }
@@ -206,34 +215,6 @@ public class BoardPathfinder : MonoBehaviour
         onEnd(targetReached);
     }
 #endif
-
-    private List<Vector2Int> GetPath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
-    {
-        List<Vector2Int> path = new List<Vector2Int>();
-        //Debug.Log(GetType() + ".GetPath: " + begXY + "->" + endXY);
-        if (begXY != endXY)
-        {
-            ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
-            begNode.locked = false;
-
-            Vector2Int nodeXY = endXY;
-            path.Add(nodeXY);
-            while (nodeXY != begXY)
-            {
-                nodeXY = GetMinDistanceNgbrCellNodeXY(nodes, nodeXY, bounds);
-                path.Add(nodeXY);
-            }
-            if (path.Count > 1)
-                path.RemoveAt(path.Count - 1);
-            for (int i = 0; i < path.Count; i++)
-            {
-                path[i] += bounds.Min;
-                //Debug.Log(GetType() + ".GetPath: " + path[i]);
-            }
-            begNode.locked = true;
-        }
-        return path;
-    }
 
     private Vector2Int GetMinDistanceNgbrCellNodeXY(CellNode[] nodes, Vector2Int nodeXY, Bounds2Int bounds)
     {

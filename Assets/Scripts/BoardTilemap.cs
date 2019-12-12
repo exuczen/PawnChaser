@@ -62,20 +62,26 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return new Bounds2Int(min, max - min + Vector2Int.one);
     }
 
-    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY, bool playerPawns, bool enemyPawns)
+    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY, params Transform[] contentContainers)
     {
-        Vector2Int min = initXY;
-        Vector2Int max = initXY;
+        return GetTilesContentCellBounds(initXY, initXY, contentContainers);
+    }
+
+    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY, Vector2Int destXY, params Transform[] contentContainers)
+    {
+        Vector2Int min = Maths.Min(initXY, destXY);
+        Vector2Int max = Maths.Max(initXY, destXY);
         Bounds2Int bounds = new Bounds2Int(initXY, Vector2Int.one);
-        if (playerPawns)
-            bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _playerPawnsContainer);
-        if (enemyPawns)
-            bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _enemyPawnsContainer);
-        bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, _enemyTargetsContainer);
+        foreach (Transform container in contentContainers)
+        {
+            bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, container);
+        }
         bounds.Min -= Vector2Int.one;
         bounds.Max += Vector2Int.one;
         return bounds;
     }
+
+
 
     private IEnumerator UpdateViewTilesColorsRoutine()
     {

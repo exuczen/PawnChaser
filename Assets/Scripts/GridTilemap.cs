@@ -14,7 +14,7 @@ using UnityEngine.SceneManagement;
 
 [ExecuteInEditMode]
 [RequireComponent(typeof(Tilemap))]
-public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
+public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 {
     [SerializeField] protected Camera _camera = default;
     [SerializeField] protected T[] _tiles = default;
@@ -184,7 +184,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             UpdateTiles(begY, endY, -halfXCount, halfXCount, (x, y) => {
                 Vector3Int srcXY = new Vector3Int(x + camPrevCell.x, y + srcYOffset, 0);
                 Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camCurrCell.y, 0);
-                Tile tile = GetTile(srcXY);
+                GridTile tile = GetTile(srcXY);
+                tile.Content = null;
                 _tilemap.SetTile(dstXY, tile);
                 _tilemap.SetTile(srcXY, null);
             });
@@ -221,7 +222,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : Tile
             UpdateTiles(-halfYCount, halfYCount, begX, endX, (x, y) => {
                 Vector3Int srcXY = new Vector3Int(x + srcXOffset, y + camCurrCell.y, 0);
                 Vector3Int dstXY = new Vector3Int(x + camCurrCell.x, y + camCurrCell.y, 0);
-                Tile tile = GetTile(srcXY);// ?? CreateTile(x, y);
+                GridTile tile = GetTile(srcXY);// ?? CreateTile(x, y);
+                tile.Content = null;
                 _tilemap.SetTile(dstXY, tile);
                 _tilemap.SetTile(srcXY, null);
             });

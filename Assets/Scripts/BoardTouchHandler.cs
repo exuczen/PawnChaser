@@ -19,6 +19,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
     private BoardTilemap _tilemap = default;
     private PlayerPawn _selectedPawn = default;
     private Vector2Int _selectedCell = default;
+    private int _selectedPawnPointerId = default;
     private Coroutine _movePawnRoutine = default;
 
     public Board Board { get => _board; }
@@ -89,7 +90,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
             _board.MoveEnemyPawn(() => {
                 _movePawnRoutine = null;
                 currentEventSystem.enabled = true;
-            });
+            }, true);
         });
     }
 
@@ -104,7 +105,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         {
             return;
         }
-        if (_selectedPawn)
+        if (_selectedPawn && eventData.pointerId == _selectedPawnPointerId)
         {
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
@@ -131,7 +132,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
                 }
             }
         }
-        else
+        else if (!_selectedPawn)
         {
             TranslateCamera(eventData.delta);
         }
@@ -153,17 +154,18 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
             {
                 if (tile.Content && (_selectedPawn = tile.Content.GetComponent<PlayerPawn>()))
                 {
+                    _selectedPawnPointerId = eventData.pointerId;
                     ShowImageAtPosition(_selectionCircle, _selectedPawn.transform.position);
                 }
                 _selectedCell = cell;
-                Debug.Log(GetType() + ".OnPonterDown: " + _selectedCell);
+                Debug.Log(GetType() + ".OnPonterDown: cell:" + _selectedCell + " pointerId: " + _selectedPawnPointerId);
             }
         }
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (_selectedPawn && _targetCircle.gameObject.activeSelf)
+        if (_selectedPawn && _selectedPawnPointerId == eventData.pointerId && _targetCircle.gameObject.activeSelf)
         {
             Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
             Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
