@@ -28,7 +28,6 @@ public class Board : MonoBehaviour
     [SerializeField] private EnemyPawn _enemyPawnPrefab = default;
     [SerializeField] private EnemyPawnTarget _enemyPawnTargetPrefab = default;
 
-    private EnemyPawnTarget _enemyTarget = default;
     private EnemyPawn _enemyPawn = default;
     private BoardPathfinder _pathfinder = default;
     private bool _pawnsPositionsSaved = default;
@@ -45,14 +44,11 @@ public class Board : MonoBehaviour
     private void Start()
     {
         _enemyPawn = _enemyPawnsContainer.GetComponentInChildren<EnemyPawn>();
-        _enemyTarget = _enemyTargetsContainer.GetComponentInChildren<EnemyPawnTarget>();
         _pathfinder = GetComponent<BoardPathfinder>();
 #if DUBUG_LEVEL
-        _pathfinder.ClearSprites();
-        _tilemap.ResetTilemap();
-        SavePawnsPositions();
+        OnDebugLevelLoaded();
 #else
-        LoadBoardLevelFromJson(_levelIndex);
+        LoadLevelFromJson(_levelIndex);
 #endif
     }
 
@@ -74,7 +70,7 @@ public class Board : MonoBehaviour
 
     public void MoveEnemyPawn(Action onEnd, bool savePawnsPositionsOnHold)
     {
-        bool pathFound = _pathfinder.FindPath(_enemyPawn, _enemyTarget, out List<Vector2Int> path,
+        bool pathFound = _pathfinder.FindPath(_enemyPawn, _enemyPawn.Target, out List<Vector2Int> path,
             _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
         if (pathFound)
             StartCoroutine(MoveEnemyPawnRoutine(path, onEnd));
@@ -82,7 +78,7 @@ public class Board : MonoBehaviour
         {
             if (savePawnsPositionsOnHold)
                 SavePawnsPositions();
-            bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(_enemyTarget, out path, _playerPawnsContainer, _enemyTargetsContainer);
+            bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(_enemyPawn.Target, out path, _playerPawnsContainer, _enemyTargetsContainer);
             bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(_enemyPawn, out path, _playerPawnsContainer) : true;
             if (enemySurrounded)
             {
@@ -167,24 +163,32 @@ public class Board : MonoBehaviour
                 _enemyPawnsContainer.DestroyAllChildrenImmediate();
                 _enemyTargetsContainer.DestroyAllChildrenImmediate();
             }
-
+            if (EditorApplicationUtils.ApplicationIsPlaying)
+            {
+                _pathfinder.ClearSprites();
+                _tilemap.ResetTilemap();
+            }
             foreach (Vector2Int cellXY in boardLevel.PlayerPawnsXY)
             {
                 _playerPawnPrefab.CreateInstance<PlayerPawn>(cellXY, _tilemap, _playerPawnsContainer);
             }
-            foreach (Vector2Int cellXY in boardLevel.EnemyPawnsXY)
-            {
-                _enemyPawn = _enemyPawnPrefab.CreateInstance<EnemyPawn>(cellXY, _tilemap, _enemyPawnsContainer);
-            }
             foreach (Vector2Int cellXY in boardLevel.EnemyTargetsXY)
             {
-                _enemyTarget = _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, _tilemap, _enemyTargetsContainer);
+                _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, _tilemap, _enemyTargetsContainer);
+            }
+            foreach (var enemyData in boardLevel.EnemyPawnsData)
+            {
+                _enemyPawn = _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyData.cell, _tilemap, _enemyPawnsContainer);
+            }
+            _tilemap.SetTilesContent();
+            for (int i = 0; i < boardLevel.EnemyPawnsData.Length; i++)
+            {
+                EnemyPawn pawn = _enemyPawnsContainer.GetChild(i).GetComponent<EnemyPawn>();
+                pawn.SetTarget(boardLevel.EnemyPawnsData[i].targetCell, _tilemap);
             }
         }
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
-            _pathfinder.ClearSprites();
-            _tilemap.ResetTilemap();
             SavePawnsPositions();
         }
 #if UNITY_EDITOR
@@ -194,6 +198,14 @@ public class Board : MonoBehaviour
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         }
 #endif
+    }
+
+    private void OnDebugLevelLoaded()
+    {
+        _pathfinder.ClearSprites();
+        _tilemap.ResetTilemap();
+        _tilemap.SetTilesContent();
+        SavePawnsPositions();
     }
 
     public void LoadNextLevel()

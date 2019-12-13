@@ -110,7 +110,7 @@ public class BoardPathfinder : MonoBehaviour
     {
         List<Vector2Int> path = new List<Vector2Int>();
         CellNode endNode = nodes[GetCellNodeIndex(endXY, bounds.Size)];
-        if (endNode.distance < float.MaxValue / 2f && begXY != endXY)
+        if (begXY != endXY && endNode.distance < float.MaxValue / 2f)
         {
             //Debug.Log(GetType() + ".GetPath: " + begXY + "->" + endXY);
             ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];

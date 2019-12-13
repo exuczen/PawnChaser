@@ -23,7 +23,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
     {
     }
 
-    protected override void SetTilesContent()
+    public override void SetTilesContent()
     {
         SetTilesContent(_playerPawnsContainer);
         SetTilesContent(_enemyPawnsContainer);
@@ -46,7 +46,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
             {
                 BoardTile boardTile = GetTile(child.position);
                 if (boardTile)
-                    boardTile.Content = child;
+                    boardTile.Content = child.GetComponent<TileContent>();
             }
         }
     }

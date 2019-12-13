@@ -18,8 +18,8 @@ public class BoardLevel
 {
     [SerializeField] private Vector2Int[] _playerPawnsXY = default;
     [SerializeField] private Vector2Int[] _playerTargetsXY = default;
-    [SerializeField] private Vector2Int[] _enemyPawnsXY = default;
     [SerializeField] private Vector2Int[] _enemyTargetsXY = default;
+    [SerializeField] private EnemyPawnData[] _enemyPawnsData = default;
 
     public const string FILENAME_PREFIX = "BoardLevel";
     public const string FILENAME_EXTENSION = ".json";
@@ -27,35 +27,40 @@ public class BoardLevel
 
     public Vector2Int[] PlayerPawnsXY { get => _playerPawnsXY; }
     public Vector2Int[] PlayerTargetsXY { get => _playerTargetsXY; }
-    public Vector2Int[] EnemyPawnsXY { get => _enemyPawnsXY; }
     public Vector2Int[] EnemyTargetsXY { get => _enemyTargetsXY; }
+    public EnemyPawnData[] EnemyPawnsData { get => _enemyPawnsData; }
 
     public BoardLevel(Board board)
     {
         List<Vector2Int> playerPawnsXY = new List<Vector2Int>();
         List<Vector2Int> playerTargetsXY = new List<Vector2Int>();
-        List<Vector2Int> enemyPawnsXY = new List<Vector2Int>();
         List<Vector2Int> enemyTargetsXY = new List<Vector2Int>();
+        List<EnemyPawnData> enemyPawnsData = new List<EnemyPawnData>();
+
+        BoardTilemap tilemap = board.Tilemap;
         foreach (Transform child in board.PlayerPawnsContainer)
         {
-            playerPawnsXY.Add(board.Tilemap.WorldToCell(child.position));
+            playerPawnsXY.Add(tilemap.WorldToCell(child.position));
         }
         foreach (Transform child in board.PlayerTargetsContainer)
         {
-            playerTargetsXY.Add(board.Tilemap.WorldToCell(child.position));
+            playerTargetsXY.Add(tilemap.WorldToCell(child.position));
         }
         foreach (Transform child in board.EnemyPawnsContainer)
         {
-            enemyPawnsXY.Add(board.Tilemap.WorldToCell(child.position));
+            enemyPawnsData.Add(new EnemyPawnData() {
+                cell = tilemap.WorldToCell(child.position),
+                targetCell = tilemap.WorldToCell(child.GetComponent<EnemyPawn>().TargetPosition)
+            });
         }
         foreach (Transform child in board.EnemyTargetsContainer)
         {
-            enemyTargetsXY.Add(board.Tilemap.WorldToCell(child.position));
+            enemyTargetsXY.Add(tilemap.WorldToCell(child.position));
         }
         _playerPawnsXY = playerPawnsXY.ToArray();
         _playerTargetsXY = playerTargetsXY.ToArray();
-        _enemyPawnsXY = enemyPawnsXY.ToArray();
         _enemyTargetsXY = enemyTargetsXY.ToArray();
+        _enemyPawnsData = enemyPawnsData.ToArray();
     }
 
     public static string GetEditorFilePath(int levelIndex)

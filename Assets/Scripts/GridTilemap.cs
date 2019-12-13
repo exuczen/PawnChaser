@@ -1,4 +1,4 @@
-﻿//#define EDITOR_RELOAD_ON_START
+﻿//#define RELOAD_ON_START_IN_EDIT_MODE
 //#define DEBUG_ADDED_TILES
 
 using MustHave.Utilities;
@@ -28,7 +28,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
     public Tilemap Tilemap { get => _tilemap; set => _tilemap = value; }
 
     protected abstract T CreateTile(int x, int y);
-    protected abstract void SetTilesContent();
+    public abstract void SetTilesContent();
     protected virtual void OnLateUpdate() { }
     protected virtual void OnAwake() { }
     protected virtual void OnStart() { }
@@ -46,7 +46,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
         {
             OnStart();
         }
-#if UNITY_EDITOR && EDITOR_RELOAD_ON_START
+#if UNITY_EDITOR && RELOAD_ON_START_IN_EDIT_MODE
         else
         {
             ResetTilemap();
@@ -61,7 +61,6 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
         _camera.transform.position = cameraPosition;
         _cameraCell = WorldToCell(cameraPosition);
         FillMapInView();
-        SetTilesContent();
     }
 
     public Vector2Int WorldToCell(Vector3 worldPos)

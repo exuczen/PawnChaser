@@ -27,7 +27,7 @@ public class Pawn : TileContent
             tile = tilemap.GetTile(cell);
             if (tile)
             {
-                tile.Content = transform;
+                tile.Content = this;
             }
         }
     }
@@ -54,7 +54,7 @@ public class Pawn : TileContent
         if (tile = tilemap.GetTile(cell))
             tile.Content = null;
         if (tile = tilemap.GetTile(destCell))
-            tile.Content = transform;
+            tile.Content = transform.GetComponent<TileContent>();
 
         onEnd?.Invoke();
     }

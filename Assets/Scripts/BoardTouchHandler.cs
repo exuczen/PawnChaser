@@ -152,8 +152,9 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
             BoardTile tile = _tilemap.GetTile(worldPoint, out Vector2Int cell);
             if (tile)
             {
-                if (tile.Content && (_selectedPawn = tile.Content.GetComponent<PlayerPawn>()))
+                if (tile.Content && tile.Content is PlayerPawn)
                 {
+                    _selectedPawn = tile.Content as PlayerPawn;
                     _selectedPawnPointerId = eventData.pointerId;
                     ShowImageAtPosition(_selectionCircle, _selectedPawn.transform.position);
                 }
