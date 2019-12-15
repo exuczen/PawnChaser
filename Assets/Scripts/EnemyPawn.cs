@@ -12,17 +12,29 @@ public struct EnemyPawnData
 
 public class EnemyPawn : Pawn
 {
-    [SerializeField] private TileContent _target = default;
+    [SerializeField] private EnemyPawnTarget _target = default;
 
-    public TileContent Target { get => _target; set { _target = value; } }
+    public EnemyPawnTarget Target { get => _target; set { _target = value; } }
     public Vector3 TargetPosition { get => _target.transform.position; }
+    public bool TargetIsOtherPawn { get => _target.GetComponent<EnemyPawn>(); }
 
     public void SetTarget(Vector2Int targetCell, BoardTilemap tilemap)
     {
         BoardTile tile = tilemap.GetTile(targetCell);
         if (tile)
         {
-            _target = tile.Content;
+            if (tile.Content is EnemyPawnTarget)
+            {
+                _target = tile.Content as EnemyPawnTarget;
+            }
+            else
+            {
+                _target = tile.Content.GetComponent<EnemyPawnTarget>();
+                if (!_target)
+                {
+                    _target = tile.Content.gameObject.AddComponent<EnemyPawnTarget>();
+                }
+            }
         }
     }
 }

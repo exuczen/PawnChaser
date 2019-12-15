@@ -28,9 +28,10 @@ public class Board : MonoBehaviour
     [SerializeField] private EnemyPawn _enemyPawnPrefab = default;
     [SerializeField] private EnemyPawnTarget _enemyPawnTargetPrefab = default;
 
-    private EnemyPawn _enemyPawn = default;
     private BoardPathfinder _pathfinder = default;
     private bool _pawnsPositionsSaved = default;
+    private List<EnemyPawn> _enemyPawns = new List<EnemyPawn>();
+    private List<PlayerPawn> _playerPawns = new List<PlayerPawn>();
     private BoardScreen _boardScreen = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
@@ -43,7 +44,6 @@ public class Board : MonoBehaviour
 
     private void Start()
     {
-        _enemyPawn = _enemyPawnsContainer.GetComponentInChildren<EnemyPawn>();
         _pathfinder = GetComponent<BoardPathfinder>();
 #if DUBUG_LEVEL
         OnDebugLevelLoaded();
@@ -52,71 +52,78 @@ public class Board : MonoBehaviour
 #endif
     }
 
-    private IEnumerator MoveEnemyPawnRoutine(List<Vector2Int> path, Action onEnd)
+    public IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell, Action onEnd = null)
     {
-        if (path.Count > 0)
+        yield return pawn.MoveRoutine(_tilemap, destCell, onEnd);
+    }
+
+    public IEnumerator MoveEnemyPawnsRoutine(Action onEnd, bool savePawnsPositionsOnHold)
+    {
+        int surroundedEnemiesCount = 0;
+        int movedEnemiesCount = 0;
+        for (int i = 0; i < _enemyPawns.Count; i++)
         {
-            Vector2Int destCell = path.PickLastElement();
-            yield return MovePawnRoutine(_enemyPawn, destCell);
+            EnemyPawn enemyPawn = _enemyPawns[i];
+            bool pathFound = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, out List<Vector2Int> path,
+                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            if (pathFound)
+            {
+                if (path.Count > 0)
+                {
+                    Vector2Int destCell = path.PickLastElement();
+                    yield return MovePawnRoutine(enemyPawn, destCell);
+                    movedEnemiesCount++;
+                    if (path.Count <= 1)
+                    {
+                        yield return new WaitForSeconds(0.5f);
+                        _boardScreen.ShowFailPopup();
+                        onEnd?.Invoke();
+                        yield break;
+                    }
+                }
+            }
+            else
+            {
+                bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawn.Target, out path, _playerPawnsContainer, _enemyTargetsContainer);
+                bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(enemyPawn, out path, _playerPawnsContainer) : true;
+                surroundedEnemiesCount += enemySurrounded ? 1 : 0;
+            }
         }
-        SavePawnsPositions();
-        if (path.Count <= 1)
+        if (movedEnemiesCount > 0 || savePawnsPositionsOnHold)
+        {
+            SavePawnsPositions();
+        }
+        if (surroundedEnemiesCount == _enemyPawns.Count)
         {
             yield return new WaitForSeconds(0.5f);
-            _boardScreen.ShowFailPopup();
+            _boardScreen.ShowSuccessPopup();
         }
         onEnd?.Invoke();
     }
 
-    public void MoveEnemyPawn(Action onEnd, bool savePawnsPositionsOnHold)
+    public void MoveEnemyPawns(Action onEnd, bool savePawnsPositionsOnHold)
     {
-        bool pathFound = _pathfinder.FindPath(_enemyPawn, _enemyPawn.Target, out List<Vector2Int> path,
-            _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
-        if (pathFound)
-            StartCoroutine(MoveEnemyPawnRoutine(path, onEnd));
-        else
-        {
-            if (savePawnsPositionsOnHold)
-                SavePawnsPositions();
-            bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(_enemyPawn.Target, out path, _playerPawnsContainer, _enemyTargetsContainer);
-            bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(_enemyPawn, out path, _playerPawnsContainer) : true;
-            if (enemySurrounded)
-            {
-                this.StartCoroutineActionAfterTime(() => {
-                    _boardScreen.ShowSuccessPopup();
-                    onEnd?.Invoke();
-                }, 1f);
-            }
-            else
-            {
-                onEnd?.Invoke();
-            }
-        }
-    }
-
-    public IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell, Action onEnd = null)
-    {
-        yield return pawn.MoveRoutine(_tilemap, destCell, onEnd);
+        StartCoroutine(MoveEnemyPawnsRoutine(onEnd, savePawnsPositionsOnHold));
     }
 
     public void SkipPlayerMove()
     {
         EventSystem currentEventSystem = EventSystem.current;
         currentEventSystem.enabled = false;
-        MoveEnemyPawn(() => {
+        MoveEnemyPawns(() => {
             currentEventSystem.enabled = true;
         }, false);
     }
 
     private void SavePawnsPositions()
     {
-        foreach (Transform pawnTransform in _playerPawnsContainer)
+        foreach (PlayerPawn pawn in _playerPawns)
         {
-            pawnTransform.GetComponent<Pawn>().AddCellPositionToStack(_tilemap);
+            pawn.AddCellPositionToStack(_tilemap);
         }
-        foreach (Transform pawnTransform in _enemyPawnsContainer)
+        foreach (EnemyPawn pawn in _enemyPawns)
         {
-            pawnTransform.GetComponent<Pawn>().AddCellPositionToStack(_tilemap);
+            pawn.AddCellPositionToStack(_tilemap);
         }
         _pawnsPositionsSaved = true;
     }
@@ -128,13 +135,13 @@ public class Board : MonoBehaviour
             _pawnsPositionsSaved = false;
             _pathfinder.ClearSprites();
         }
-        foreach (Transform pawnTransform in _playerPawnsContainer)
+        foreach (PlayerPawn pawn in _playerPawns)
         {
-            pawnTransform.GetComponent<Pawn>().SetPreviousCellPosition(_tilemap);
+            pawn.SetPreviousCellPosition(_tilemap);
         }
-        foreach (Transform pawnTransform in _enemyPawnsContainer)
+        foreach (EnemyPawn pawn in _enemyPawns)
         {
-            pawnTransform.GetComponent<Pawn>().SetPreviousCellPosition(_tilemap);
+            pawn.SetPreviousCellPosition(_tilemap);
         }
     }
 
@@ -151,17 +158,17 @@ public class Board : MonoBehaviour
         {
             if (EditorApplicationUtils.ApplicationIsPlaying)
             {
-                _playerPawnsContainer.DestroyAllChildren();
-                _playerTargetsContainer.DestroyAllChildren();
-                _enemyPawnsContainer.DestroyAllChildren();
-                _enemyTargetsContainer.DestroyAllChildren();
+                foreach (Transform container in _tilemap.transform)
+                {
+                    container.DestroyAllChildren();
+                }
             }
             else
             {
-                _playerPawnsContainer.DestroyAllChildrenImmediate();
-                _playerTargetsContainer.DestroyAllChildrenImmediate();
-                _enemyPawnsContainer.DestroyAllChildrenImmediate();
-                _enemyTargetsContainer.DestroyAllChildrenImmediate();
+                foreach (Transform container in _tilemap.transform)
+                {
+                    container.DestroyAllChildrenImmediate();
+                }
             }
             if (EditorApplicationUtils.ApplicationIsPlaying)
             {
@@ -176,28 +183,60 @@ public class Board : MonoBehaviour
             {
                 _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, _tilemap, _enemyTargetsContainer);
             }
-            foreach (var enemyData in boardLevel.EnemyPawnsData)
+            EnemyPawnData[] enemyPawnsData = boardLevel.EnemyPawnsData;
+            for (int i = 0; i < enemyPawnsData.Length; i++)
             {
-                _enemyPawn = _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyData.cell, _tilemap, _enemyPawnsContainer);
+                _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyPawnsData[i].cell, _tilemap, _enemyPawnsContainer);
             }
             _tilemap.SetTilesContent();
-            for (int i = 0; i < boardLevel.EnemyPawnsData.Length; i++)
+            for (int i = 0; i < enemyPawnsData.Length; i++)
             {
                 EnemyPawn pawn = _enemyPawnsContainer.GetChild(i).GetComponent<EnemyPawn>();
-                pawn.SetTarget(boardLevel.EnemyPawnsData[i].targetCell, _tilemap);
+                pawn.SetTarget(enemyPawnsData[i].targetCell, _tilemap);
             }
-        }
-        if (EditorApplicationUtils.ApplicationIsPlaying)
-        {
-            SavePawnsPositions();
-        }
+            if (EditorApplicationUtils.ApplicationIsPlaying)
+            {
+                AddPawnsToLists();
+                SavePawnsPositions();
+            }
 #if UNITY_EDITOR
-        else
-        {
-            //Undo.RecordObject(gameObject, "LoadLevelFromJson");
-            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-        }
+            else
+            {
+                //Undo.RecordObject(gameObject, "LoadLevelFromJson");
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            }
 #endif
+        }
+    }
+
+    private void AddPawnsToLists()
+    {
+        _playerPawns.Clear();
+        foreach (Transform pawn in _playerPawnsContainer)
+        {
+            _playerPawns.Add(pawn.GetComponent<PlayerPawn>());
+        }
+        _enemyPawns.Clear();
+        foreach (Transform pawn in _enemyPawnsContainer)
+        {
+            _enemyPawns.Add(pawn.GetComponent<EnemyPawn>());
+        }
+        _enemyPawns.Sort((pawnA, pawnB) => {
+            bool pawnATargetIsOtherPawn = pawnA.TargetIsOtherPawn;
+            bool pawnBTargetIsOtherPawn = pawnB.TargetIsOtherPawn;
+            if (pawnATargetIsOtherPawn == pawnBTargetIsOtherPawn)
+                return 0;
+            else if (pawnATargetIsOtherPawn && !pawnBTargetIsOtherPawn)
+                return 1;
+            else if (pawnBTargetIsOtherPawn && !pawnATargetIsOtherPawn)
+                return -1;
+            else
+                return 0;
+        });
+        //foreach (var enemyPawn in _enemyPawns)
+        //{
+        //    Debug.Log(GetType() + ".AddEnemyPawnsToList: " + enemyPawn.Target);
+        //}
     }
 
     private void OnDebugLevelLoaded()
@@ -205,6 +244,7 @@ public class Board : MonoBehaviour
         _pathfinder.ClearSprites();
         _tilemap.ResetTilemap();
         _tilemap.SetTilesContent();
+        AddPawnsToLists();
         SavePawnsPositions();
     }
 

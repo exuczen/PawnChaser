@@ -7,16 +7,8 @@ using UnityEngine.Tilemaps;
 
 public class BoardTilemap : GridTilemap<BoardTile>
 {
-    private Transform _playerPawnsContainer = default;
-    private Transform _enemyPawnsContainer = default;
-    private Transform _enemyTargetsContainer = default;
-
     protected override void OnAwake()
     {
-        Board board = GetComponentInParent<Board>();
-        _playerPawnsContainer = board.PlayerPawnsContainer;
-        _enemyPawnsContainer = board.EnemyPawnsContainer;
-        _enemyTargetsContainer = board.EnemyTargetsContainer;
     }
 
     protected override void OnStart()
@@ -25,9 +17,10 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     public override void SetTilesContent()
     {
-        SetTilesContent(_playerPawnsContainer);
-        SetTilesContent(_enemyPawnsContainer);
-        SetTilesContent(_enemyTargetsContainer);
+        foreach (Transform container in transform)
+        {
+            SetTilesContent(container);
+        }
     }
 
     protected override BoardTile CreateTile(int x, int y)
@@ -81,39 +74,37 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return bounds;
     }
 
-
-
-    private IEnumerator UpdateViewTilesColorsRoutine()
-    {
-        while (true)
-        {
-            GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
-            int viewTilesCount = (2 * halfXCount + 1) * (2 * halfYCount + 1);
-            Color[] currColors = new Color[viewTilesCount];
-            Color[] nextColors = new Color[viewTilesCount];
-            int colorIndex = 0;
-            UpdateTilesInView((x, y) => {
-                Vector3Int cell = new Vector3Int(x, y, 0);
-                BoardTile tile = GetTile(cell);
-                currColors[colorIndex] = tile.color;
-                nextColors[colorIndex] = Color.Lerp(Color.HSVToRGB(0f, 0f, 0.7f), Color.HSVToRGB(0f, 0f, 0.8f), UnityEngine.Random.Range(0f, 1f));
-                colorIndex++;
-            }, false);
-            yield return CoroutineUtils.UpdateRoutine(1f, (transition, elapsedTime) => {
-                colorIndex = 0;
-                UpdateTilesInView((x, y) => {
-                    Vector3Int cell = new Vector3Int(x, y, 0);
-                    BoardTile tile = GetTile(cell);
-                    tile.color = Color.Lerp(currColors[colorIndex], nextColors[colorIndex], transition);
-                    colorIndex++;
-                }, true);
-            });
-            colorIndex = 0;
-            UpdateTilesInView((x, y) => {
-                Vector3Int cell = new Vector3Int(x, y, 0);
-                BoardTile tile = GetTile(cell);
-                tile.color = nextColors[colorIndex++];
-            }, true);
-        }
-    }
+    //private IEnumerator UpdateViewTilesColorsRoutine()
+    //{
+    //    while (true)
+    //    {
+    //        GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
+    //        int viewTilesCount = (2 * halfXCount + 1) * (2 * halfYCount + 1);
+    //        Color[] currColors = new Color[viewTilesCount];
+    //        Color[] nextColors = new Color[viewTilesCount];
+    //        int colorIndex = 0;
+    //        UpdateTilesInView((x, y) => {
+    //            Vector3Int cell = new Vector3Int(x, y, 0);
+    //            BoardTile tile = GetTile(cell);
+    //            currColors[colorIndex] = tile.color;
+    //            nextColors[colorIndex] = Color.Lerp(Color.HSVToRGB(0f, 0f, 0.7f), Color.HSVToRGB(0f, 0f, 0.8f), UnityEngine.Random.Range(0f, 1f));
+    //            colorIndex++;
+    //        }, false);
+    //        yield return CoroutineUtils.UpdateRoutine(1f, (transition, elapsedTime) => {
+    //            colorIndex = 0;
+    //            UpdateTilesInView((x, y) => {
+    //                Vector3Int cell = new Vector3Int(x, y, 0);
+    //                BoardTile tile = GetTile(cell);
+    //                tile.color = Color.Lerp(currColors[colorIndex], nextColors[colorIndex], transition);
+    //                colorIndex++;
+    //            }, true);
+    //        });
+    //        colorIndex = 0;
+    //        UpdateTilesInView((x, y) => {
+    //            Vector3Int cell = new Vector3Int(x, y, 0);
+    //            BoardTile tile = GetTile(cell);
+    //            tile.color = nextColors[colorIndex++];
+    //        }, true);
+    //    }
+    //}
 }

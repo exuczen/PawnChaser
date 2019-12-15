@@ -30,9 +30,12 @@ public class BoardEditor : Editor
         }
         GUILayout.EndHorizontal();
         DrawDefaultInspector();
-        bool dirty = false;
-        dirty |= prevLevelIndex != board.LevelIndex;
-        if (dirty)
-            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        if (!EditorApplication.isPlaying)
+        {
+            bool dirty = false;
+            dirty |= prevLevelIndex != board.LevelIndex;
+            if (dirty)
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        }
     }
 }

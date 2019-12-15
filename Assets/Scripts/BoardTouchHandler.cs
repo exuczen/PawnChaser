@@ -87,7 +87,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         currentEventSystem.enabled = false;
         yield return _board.MovePawnRoutine(pawn, destCell, () => {
             _selectedCell = destCell;
-            _board.MoveEnemyPawn(() => {
+            _board.MoveEnemyPawns(() => {
                 _movePawnRoutine = null;
                 currentEventSystem.enabled = true;
             }, true);

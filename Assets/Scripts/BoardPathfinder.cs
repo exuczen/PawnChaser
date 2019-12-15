@@ -22,8 +22,6 @@ public class BoardPathfinder : MonoBehaviour
 #if DEBUG_PATHFINDING
     private Coroutine _updateCellNodesRoutine = default;
 #endif
-    private Transform _playerPawnsContainer = default;
-    private Transform _enemyPawnsContainer = default;
     private BoardTilemap _tilemap = default;
 
     private readonly Vector2Int[] _cellNgbrsDeltaXY = new Vector2Int[]
@@ -43,8 +41,6 @@ public class BoardPathfinder : MonoBehaviour
     private void Awake()
     {
         Board board = GetComponentInParent<Board>();
-        _playerPawnsContainer = board.PlayerPawnsContainer;
-        _enemyPawnsContainer = board.EnemyTargetsContainer;
         _tilemap = board.Tilemap;
     }
 
