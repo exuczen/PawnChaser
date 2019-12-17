@@ -10,11 +10,19 @@ public struct EnemyPawnData
     [SerializeField] public Vector2Int targetCell;
 }
 
+public class EnemyPawnsPair : Tuple<EnemyPawn, EnemyPawn>
+{
+    public EnemyPawnsPair(EnemyPawn item1, EnemyPawn item2) : base(item1, item2) { }
+
+    public EnemyPawn Pawn1 => Item1;
+    public EnemyPawn Pawn2 => Item2;
+}
+
 public class EnemyPawn : Pawn
 {
     [SerializeField] private EnemyPawnTarget _target = default;
 
-    public EnemyPawnTarget Target { get => _target; set { _target = value; } }
+    public EnemyPawnTarget Target { get => _target; }
     public Vector3 TargetPosition { get => _target.transform.position; }
     public bool TargetIsOtherPawn { get => _target.GetComponent<EnemyPawn>(); }
 

@@ -17,36 +17,37 @@ using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
-    [SerializeField, HideInInspector] private int _levelIndex = default;
-
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Transform _playerPawnsContainer = default;
-    [SerializeField] private Transform _playerTargetsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
-    [SerializeField] private Transform _enemyTargetsContainer = default;
-    [SerializeField] private PlayerPawn _playerPawnPrefab = default;
-    [SerializeField] private EnemyPawn _enemyPawnPrefab = default;
-    [SerializeField] private EnemyPawnTarget _enemyPawnTargetPrefab = default;
+
+    [Header("BOARD LEVEL")]
+    [SerializeField] private int _levelIndex = default;
+    [SerializeField] private int _playerMovesInTurn = default;
 
     private BoardPathfinder _pathfinder = default;
+    private EnemyHandler _enemyHandler = default;
     private bool _pawnsPositionsSaved = default;
     private List<EnemyPawn> _enemyPawns = new List<EnemyPawn>();
     private List<PlayerPawn> _playerPawns = new List<PlayerPawn>();
     private BoardScreen _boardScreen = default;
+    private int _playerMovesLeft = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
     public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
+    public int PlayerMovesInTurn { get => _playerMovesInTurn; }
     public BoardScreen BoardScreen { get => _boardScreen; set => _boardScreen = value; }
-    public Transform PlayerPawnsContainer { get => _playerPawnsContainer; }
-    public Transform PlayerTargetsContainer { get => _playerTargetsContainer; }
-    public Transform EnemyPawnsContainer { get => _enemyPawnsContainer; }
-    public Transform EnemyTargetsContainer { get => _enemyTargetsContainer; }
+
+    private void Awake()
+    {
+        _pathfinder = GetComponent<BoardPathfinder>();
+        _enemyHandler = GetComponent<EnemyHandler>();
+    }
 
     private void Start()
     {
-        _pathfinder = GetComponent<BoardPathfinder>();
 #if DUBUG_LEVEL
-        OnDebugLevelLoaded();
+        OnLevelLoaded(null);
 #else
         LoadLevelFromJson(_levelIndex);
 #endif
@@ -57,65 +58,43 @@ public class Board : MonoBehaviour
         yield return pawn.MoveRoutine(_tilemap, destCell, onEnd);
     }
 
-    public IEnumerator MoveEnemyPawnsRoutine(Action onEnd, bool savePawnsPositionsOnHold)
+    public IEnumerator MovePlayerPawnRoutine(PlayerPawn pawn, Vector2Int destCell, Action onEnd = null)
     {
-        int surroundedEnemiesCount = 0;
-        int movedEnemiesCount = 0;
-        for (int i = 0; i < _enemyPawns.Count; i++)
-        {
-            EnemyPawn enemyPawn = _enemyPawns[i];
-            bool pathFound = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, out List<Vector2Int> path,
-                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
-            if (pathFound)
-            {
-                if (path.Count > 0)
-                {
-                    Vector2Int destCell = path.PickLastElement();
-                    yield return MovePawnRoutine(enemyPawn, destCell);
-                    movedEnemiesCount++;
-                    if (path.Count <= 1)
-                    {
-                        yield return new WaitForSeconds(0.5f);
-                        _boardScreen.ShowFailPopup();
-                        onEnd?.Invoke();
-                        yield break;
-                    }
-                }
-            }
-            else
-            {
-                bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawn.Target, out path, _playerPawnsContainer, _enemyTargetsContainer);
-                bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(enemyPawn, out path, _playerPawnsContainer) : true;
-                surroundedEnemiesCount += enemySurrounded ? 1 : 0;
-            }
-        }
-        if (movedEnemiesCount > 0 || savePawnsPositionsOnHold)
+        yield return pawn.MoveRoutine(_tilemap, destCell);
+        _playerMovesLeft = Mathf.Max(_playerMovesLeft - 1, 0);
+        if (_playerMovesLeft > 0)
         {
             SavePawnsPositions();
+            onEnd?.Invoke();
         }
-        if (surroundedEnemiesCount == _enemyPawns.Count)
+        else
         {
-            yield return new WaitForSeconds(0.5f);
-            _boardScreen.ShowSuccessPopup();
+            MoveEnemyPawns(enemiesMoved => {
+                _playerMovesLeft = enemiesMoved ? _playerMovesInTurn : 1;
+                SavePawnsPositions();
+                onEnd?.Invoke();
+            });
         }
-        onEnd?.Invoke();
     }
 
-    public void MoveEnemyPawns(Action onEnd, bool savePawnsPositionsOnHold)
+    public void MoveEnemyPawns(Action<bool> onEnd)
     {
-        StartCoroutine(MoveEnemyPawnsRoutine(onEnd, savePawnsPositionsOnHold));
+        StartCoroutine(_enemyHandler.MoveEnemyPawnsRoutine(this, onEnd));
     }
 
     public void SkipPlayerMove()
     {
         EventSystem currentEventSystem = EventSystem.current;
         currentEventSystem.enabled = false;
-        MoveEnemyPawns(() => {
+        MoveEnemyPawns(enemiesMoved => {
+            _playerMovesLeft = _playerMovesInTurn;
+            if (enemiesMoved)
+                SavePawnsPositions();
             currentEventSystem.enabled = true;
-        }, false);
+        });
     }
 
-    private void SavePawnsPositions()
+    public void SavePawnsPositions()
     {
         foreach (PlayerPawn pawn in _playerPawns)
         {
@@ -143,69 +122,32 @@ public class Board : MonoBehaviour
         {
             pawn.SetPreviousCellPosition(_tilemap);
         }
+
+        Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
+        if (_playerMovesLeft < _playerMovesInTurn)
+        {
+            _playerMovesLeft++;
+        }
+        else
+        {
+            _playerMovesLeft = 1;
+        }
+        Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
     }
 
     public void SaveLevelToJson()
     {
-        BoardLevel boardLevel = new BoardLevel(this);
+        BoardLevel boardLevel = new BoardLevel(this, _tilemap);
         boardLevel.SaveToJson(_levelIndex);
     }
 
     public void LoadLevelFromJson(int levelIndex)
     {
-        BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
+        //BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
+        BoardLevel boardLevel = _tilemap.LoadLevelFromJson(levelIndex);
         if (boardLevel != null)
         {
-            if (EditorApplicationUtils.ApplicationIsPlaying)
-            {
-                foreach (Transform container in _tilemap.transform)
-                {
-                    container.DestroyAllChildren();
-                }
-            }
-            else
-            {
-                foreach (Transform container in _tilemap.transform)
-                {
-                    container.DestroyAllChildrenImmediate();
-                }
-            }
-            if (EditorApplicationUtils.ApplicationIsPlaying)
-            {
-                _pathfinder.ClearSprites();
-                _tilemap.ResetTilemap();
-            }
-            foreach (Vector2Int cellXY in boardLevel.PlayerPawnsXY)
-            {
-                _playerPawnPrefab.CreateInstance<PlayerPawn>(cellXY, _tilemap, _playerPawnsContainer);
-            }
-            foreach (Vector2Int cellXY in boardLevel.EnemyTargetsXY)
-            {
-                _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, _tilemap, _enemyTargetsContainer);
-            }
-            EnemyPawnData[] enemyPawnsData = boardLevel.EnemyPawnsData;
-            for (int i = 0; i < enemyPawnsData.Length; i++)
-            {
-                _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyPawnsData[i].cell, _tilemap, _enemyPawnsContainer);
-            }
-            _tilemap.SetTilesContent();
-            for (int i = 0; i < enemyPawnsData.Length; i++)
-            {
-                EnemyPawn pawn = _enemyPawnsContainer.GetChild(i).GetComponent<EnemyPawn>();
-                pawn.SetTarget(enemyPawnsData[i].targetCell, _tilemap);
-            }
-            if (EditorApplicationUtils.ApplicationIsPlaying)
-            {
-                AddPawnsToLists();
-                SavePawnsPositions();
-            }
-#if UNITY_EDITOR
-            else
-            {
-                //Undo.RecordObject(gameObject, "LoadLevelFromJson");
-                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-            }
-#endif
+            OnLevelLoaded(boardLevel);
         }
     }
 
@@ -221,36 +163,43 @@ public class Board : MonoBehaviour
         {
             _enemyPawns.Add(pawn.GetComponent<EnemyPawn>());
         }
-        _enemyPawns.Sort((pawnA, pawnB) => {
-            bool pawnATargetIsOtherPawn = pawnA.TargetIsOtherPawn;
-            bool pawnBTargetIsOtherPawn = pawnB.TargetIsOtherPawn;
-            if (pawnATargetIsOtherPawn == pawnBTargetIsOtherPawn)
-                return 0;
-            else if (pawnATargetIsOtherPawn && !pawnBTargetIsOtherPawn)
-                return 1;
-            else if (pawnBTargetIsOtherPawn && !pawnATargetIsOtherPawn)
-                return -1;
-            else
-                return 0;
-        });
+        _enemyHandler.AddPawnToLists(_enemyPawns, true);
+
         //foreach (var enemyPawn in _enemyPawns)
         //{
         //    Debug.Log(GetType() + ".AddEnemyPawnsToList: " + enemyPawn.Target);
         //}
     }
 
-    private void OnDebugLevelLoaded()
+    private void OnLevelLoaded(BoardLevel boardLevel)
     {
-        _pathfinder.ClearSprites();
-        _tilemap.ResetTilemap();
-        _tilemap.SetTilesContent();
-        AddPawnsToLists();
-        SavePawnsPositions();
+        if (boardLevel != null)
+        {
+            _playerMovesInTurn = boardLevel.PlayerMovesInTurn;
+        }
+        else if (EditorApplicationUtils.ApplicationIsPlaying)
+        {
+            _tilemap.ResetTilemap();
+            _tilemap.SetTilesContent();
+        }
+        if (EditorApplicationUtils.ApplicationIsPlaying)
+        {
+            _playerMovesLeft = _playerMovesInTurn;
+            _pathfinder.ClearSprites();
+            AddPawnsToLists();
+            SavePawnsPositions();
+        }
+#if UNITY_EDITOR
+        else
+        {
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        }
+#endif
     }
 
     public void LoadNextLevel()
     {
-        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 2);
+        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 4);
     }
 
     public void ResetLevel()

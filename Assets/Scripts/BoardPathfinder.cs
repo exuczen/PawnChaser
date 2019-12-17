@@ -40,7 +40,7 @@ public class BoardPathfinder : MonoBehaviour
 
     private void Awake()
     {
-        Board board = GetComponentInParent<Board>();
+        Board board = GetComponent<Board>();
         _tilemap = board.Tilemap;
     }
 
@@ -50,7 +50,7 @@ public class BoardPathfinder : MonoBehaviour
         _pathSpritesContainer.DestroyAllChildren();
     }
 
-    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, bool showPath, params Transform[] contentContainers)
+    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -80,8 +80,6 @@ public class BoardPathfinder : MonoBehaviour
             }
             ClearTilesMeshTexts(bounds);
             path = CreatePath(nodes, bounds, begXY, endXY);
-            if (showPath)
-                CreatePathSprites(path);
             return targetReached;
         }
     }
@@ -91,7 +89,7 @@ public class BoardPathfinder : MonoBehaviour
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        return FindPath(begXY, endXY, bounds, out path, true, contentContainers);
+        return FindPath(begXY, endXY, bounds, out path, contentContainers);
     }
 
     public bool FindPathToBoundsMin(TileContent begTileContent, out List<Vector2Int> path, params Transform[] contentContainers)
@@ -99,7 +97,7 @@ public class BoardPathfinder : MonoBehaviour
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
-        return FindPath(begXY, endXY, bounds, out path, false, contentContainers);
+        return FindPath(begXY, endXY, bounds, out path, contentContainers);
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
@@ -234,12 +232,17 @@ public class BoardPathfinder : MonoBehaviour
         return minDistNgbrXY;
     }
 
-    private void CreatePathSprites(List<Vector2Int> path)
+    public List<SpriteRenderer> CreatePathSprites(List<Vector2Int> path, int begOffset, int endOffset)
     {
-        for (int i = 1; i < path.Count - 1; i++)
+        List<SpriteRenderer> sprites = new List<SpriteRenderer>();
+        int beg = begOffset;
+        int end = path.Count - endOffset - 1;
+        for (int i = beg; i <= end; i++)
         {
-            Instantiate(_pathSpritePrefab, _tilemap.GetCellCenterWorld(path[i]), Quaternion.identity, _pathSpritesContainer);
+            SpriteRenderer sprite = Instantiate(_pathSpritePrefab, _tilemap.GetCellCenterWorld(path[i]), Quaternion.identity, _pathSpritesContainer);
+            sprites.Add(sprite);
         }
+        return sprites;
     }
 
     private void SetTileMeshText(Vector2Int cell, string text)

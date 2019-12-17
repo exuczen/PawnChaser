@@ -7,6 +7,20 @@ using UnityEngine.Tilemaps;
 
 public class BoardTilemap : GridTilemap<BoardTile>
 {
+    [SerializeField] private Transform _playerPawnsContainer = default;
+    [SerializeField] private Transform _playerTargetsContainer = default;
+    [SerializeField] private Transform _enemyPawnsContainer = default;
+    [SerializeField] private Transform _enemyTargetsContainer = default;
+    [SerializeField] private PlayerPawn _playerPawnPrefab = default;
+    [SerializeField] private EnemyPawn _enemyPawnPrefab = default;
+    [SerializeField] private EnemyPawnTarget _enemyPawnTargetPrefab = default;
+
+    public Transform PlayerPawnsContainer { get => _playerPawnsContainer; }
+    public Transform PlayerTargetsContainer { get => _playerTargetsContainer; }
+    public Transform EnemyPawnsContainer { get => _enemyPawnsContainer; }
+    public Transform EnemyTargetsContainer { get => _enemyTargetsContainer; }
+
+
     protected override void OnAwake()
     {
     }
@@ -72,6 +86,49 @@ public class BoardTilemap : GridTilemap<BoardTile>
         bounds.Min -= Vector2Int.one;
         bounds.Max += Vector2Int.one;
         return bounds;
+    }
+
+    public BoardLevel LoadLevelFromJson(int levelIndex)
+    {
+        BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
+        if (boardLevel != null)
+        {
+            if (EditorApplicationUtils.ApplicationIsPlaying)
+            {
+                ResetTilemap();
+                foreach (Transform container in _tilemap.transform)
+                {
+                    container.DestroyAllChildren();
+                }
+            }
+            else
+            {
+                foreach (Transform container in _tilemap.transform)
+                {
+                    container.DestroyAllChildrenImmediate();
+                }
+            }
+            foreach (Vector2Int cellXY in boardLevel.PlayerPawnsXY)
+            {
+                _playerPawnPrefab.CreateInstance<PlayerPawn>(cellXY, this, _playerPawnsContainer);
+            }
+            foreach (Vector2Int cellXY in boardLevel.EnemyTargetsXY)
+            {
+                _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, this, _enemyTargetsContainer);
+            }
+            EnemyPawnData[] enemyPawnsData = boardLevel.EnemyPawnsData;
+            for (int i = 0; i < enemyPawnsData.Length; i++)
+            {
+                _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyPawnsData[i].cell, this, _enemyPawnsContainer);
+            }
+            SetTilesContent();
+            for (int i = 0; i < enemyPawnsData.Length; i++)
+            {
+                EnemyPawn pawn = _enemyPawnsContainer.GetChild(i).GetComponent<EnemyPawn>();
+                pawn.SetTarget(enemyPawnsData[i].targetCell, this);
+            }
+        }
+        return boardLevel;
     }
 
     //private IEnumerator UpdateViewTilesColorsRoutine()

@@ -21,6 +21,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
     private Vector2Int _selectedCell = default;
     private int _selectedPawnPointerId = default;
     private Coroutine _movePawnRoutine = default;
+    //private int _playerMovesLeft = default;
 
     public Board Board { get => _board; }
 
@@ -81,16 +82,14 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         camera.transform.Translate(1f * translation, Space.Self);
     }
 
-    private IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell)
+    private IEnumerator MovePlayerPawnRoutine(PlayerPawn pawn, Vector2Int destCell)
     {
         EventSystem currentEventSystem = EventSystem.current;
         currentEventSystem.enabled = false;
-        yield return _board.MovePawnRoutine(pawn, destCell, () => {
-            _selectedCell = destCell;
-            _board.MoveEnemyPawns(() => {
-                _movePawnRoutine = null;
-                currentEventSystem.enabled = true;
-            }, true);
+        yield return _board.MovePlayerPawnRoutine(pawn, destCell, () => {
+            //_selectedCell = destCell;
+            _movePawnRoutine = null;
+            currentEventSystem.enabled = true;
         });
     }
 
@@ -170,7 +169,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         {
             Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
             Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
-            _movePawnRoutine = StartCoroutine(MovePawnRoutine(_selectedPawn, destCell));
+            _movePawnRoutine = StartCoroutine(MovePlayerPawnRoutine(_selectedPawn, destCell));
         }
         _targetCircle.gameObject.SetActive(false);
         _selectionCircle.gameObject.SetActive(false);
