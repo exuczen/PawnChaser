@@ -53,11 +53,6 @@ public class Board : MonoBehaviour
 #endif
     }
 
-    public IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell, Action onEnd = null)
-    {
-        yield return pawn.MoveRoutine(_tilemap, destCell, onEnd);
-    }
-
     public IEnumerator MovePlayerPawnRoutine(PlayerPawn pawn, Vector2Int destCell, Action onEnd = null)
     {
         yield return pawn.MoveRoutine(_tilemap, destCell);
@@ -79,7 +74,7 @@ public class Board : MonoBehaviour
 
     public void MoveEnemyPawns(Action<bool> onEnd)
     {
-        StartCoroutine(_enemyHandler.MoveEnemyPawnsRoutine(this, onEnd));
+        StartCoroutine(_enemyHandler.MoveEnemyPawnsRoutine(onEnd, _boardScreen.ShowSuccessPopup, _boardScreen.ShowFailPopup));
     }
 
     public void SkipPlayerMove()
@@ -114,25 +109,29 @@ public class Board : MonoBehaviour
             _pawnsPositionsSaved = false;
             _pathfinder.ClearSprites();
         }
+        int movedPlayerPawnsCount = 0;
         foreach (PlayerPawn pawn in _playerPawns)
         {
-            pawn.SetPreviousCellPosition(_tilemap);
+            movedPlayerPawnsCount += pawn.SetPreviousCellPosition(_tilemap) ? 1 : 0;
         }
         foreach (EnemyPawn pawn in _enemyPawns)
         {
             pawn.SetPreviousCellPosition(_tilemap);
         }
-
-        Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
-        if (_playerMovesLeft < _playerMovesInTurn)
+        //Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
+        if (movedPlayerPawnsCount > 0)
         {
-            _playerMovesLeft++;
+            if (_playerMovesLeft < _playerMovesInTurn)
+                _playerMovesLeft += movedPlayerPawnsCount;
+            else
+                _playerMovesLeft = movedPlayerPawnsCount;
+            _playerMovesLeft = Mathf.Min(_playerMovesLeft, _playerMovesInTurn);
         }
         else
         {
-            _playerMovesLeft = 1;
+            _playerMovesLeft = _playerMovesInTurn;
         }
-        Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
+        //Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
     }
 
     public void SaveLevelToJson()

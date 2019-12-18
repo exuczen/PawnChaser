@@ -10,7 +10,7 @@ public class Pawn : TileContent
 {
     private List<Vector2Int> _cellsStack = new List<Vector2Int>();
 
-    public void SetPreviousCellPosition(BoardTilemap tilemap)
+    public bool SetPreviousCellPosition(BoardTilemap tilemap)
     {
         if (_cellsStack.Count > 0)
         {
@@ -22,14 +22,17 @@ public class Pawn : TileContent
             {
                 tile.Content = null;
             }
-            Vector2Int cell = _cellsStack[_cellsStack.Count - 1];
-            transform.position = tilemap.GetCellCenterWorld(cell);
-            tile = tilemap.GetTile(cell);
+            Vector2Int currCell = tilemap.WorldToCell(transform.position);
+            Vector2Int prevCell = _cellsStack[_cellsStack.Count - 1];
+            transform.position = tilemap.GetCellCenterWorld(prevCell);
+            tile = tilemap.GetTile(prevCell);
             if (tile)
             {
                 tile.Content = this;
             }
+            return currCell != prevCell;
         }
+        return false;
     }
 
     public void AddCellPositionToStack(BoardTilemap tilemap)

@@ -1,4 +1,7 @@
-﻿using MustHave.Utilities;
+﻿//#define DEBUG_PATHFINDING
+
+using MustHave;
+using MustHave.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,21 +16,66 @@ public class EnemyHandler : MonoBehaviour
 
     private BoardPathfinder _pathfinder = default;
     //private Board _board = default;
+    private BoardTilemap _tilemap = default;
     private List<EnemyPawn> _enemyPawns = new List<EnemyPawn>();
     private List<EnemyPawn> _enemySingles = new List<EnemyPawn>();
     private List<EnemyPawnsPair> _enemyPairs = new List<EnemyPawnsPair>();
 
     private void Awake()
     {
-        //_board = GetComponent<Board>();
+        Board board = GetComponent<Board>();
+        _tilemap = board.Tilemap;
         _pathfinder = GetComponent<BoardPathfinder>();
     }
 
-    public IEnumerator MoveEnemyPawnsRoutine(Board board, Action<bool> onEnd)
+    private IEnumerator MovePawnRoutine(Pawn pawn, Vector2Int destCell)
+    {
+        yield return pawn.MoveRoutine(_tilemap, destCell);
+    }
+
+    private IEnumerator MoveEnemyPawnsPairRoutine(EnemyPawnsPair pair, List<Vector2Int> path)
+    {
+        Transform pawn1Transform = pair.Pawn1.transform;
+        Transform pawn2Transform = pair.Pawn2.transform;
+
+        Vector2Int pawn1BegCell = _tilemap.WorldToCell(pawn1Transform.position);
+        Vector2Int pawn1EndCell = path.PickLastElement();
+        Vector3 pawn1BegPos = pawn1Transform.position;
+        Vector3 pawn1EndPos = _tilemap.GetCellCenterWorld(pawn1EndCell);
+
+        Vector2Int pawn2BegCell = _tilemap.WorldToCell(pawn2Transform.position);
+        Vector2Int pawn2EndCell = path.Count > 0 ? path.PickFirstElement() : pawn1EndCell;
+        Vector3 pawn2BegPos = pawn2Transform.position;
+        Vector3 pawn2EndPos = _tilemap.GetCellCenterWorld(pawn2EndCell);
+
+        float duration = 0.3f;
+        yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
+            float shift = Maths.GetTransition(TransitionType.COS_IN_PI_RANGE, transition);
+            pawn1Transform.position = Vector3.Lerp(pawn1BegPos, pawn1EndPos, shift);
+            pawn2Transform.position = Vector3.Lerp(pawn2BegPos, pawn2EndPos, shift);
+        });
+        pawn1Transform.position = pawn1EndPos;
+        pawn2Transform.position = pawn2EndPos;
+
+        BoardTile tile;
+
+        if (tile = _tilemap.GetTile(pawn1BegCell))
+            tile.Content = null;
+        if (tile = _tilemap.GetTile(pawn1EndCell))
+            tile.Content = pawn1Transform.GetComponent<TileContent>();
+
+        if (tile = _tilemap.GetTile(pawn2BegCell))
+            tile.Content = null;
+        if (tile = _tilemap.GetTile(pawn2EndCell))
+            tile.Content = pawn2Transform.GetComponent<TileContent>();
+    }
+
+
+    public IEnumerator MoveEnemyPawnsRoutine(Action<bool> onEnd, Action onSuccess, Action onFail)
     {
         int surroundedEnemiesCount = 0;
         int movedEnemiesCount = 0;
-
+        bool enemyReachedTarget = false;
         for (int i = 0; i < _enemySingles.Count; i++)
         {
             EnemyPawn enemyPawn = _enemySingles[i];
@@ -37,16 +85,14 @@ public class EnemyHandler : MonoBehaviour
             {
                 if (path.Count > 0)
                 {
+                    _pathfinder.CreatePathSprites(path, 1, 1);
                     Vector2Int destCell = path.PickLastElement();
-                    _pathfinder.CreatePathSprites(path, 1, 0);
-                    yield return board.MovePawnRoutine(enemyPawn, destCell);
+                    yield return MovePawnRoutine(enemyPawn, destCell);
                     movedEnemiesCount++;
                     if (path.Count <= 1)
                     {
-                        yield return new WaitForSeconds(0.5f);
-                        board.BoardScreen.ShowFailPopup();
-                        onEnd?.Invoke(movedEnemiesCount > 0);
-                        yield break;
+                        enemyReachedTarget = true;
+                        break;
                     }
                 }
             }
@@ -61,30 +107,32 @@ public class EnemyHandler : MonoBehaviour
         {
             EnemyPawn enemyPawnA = pair.Pawn1;
             EnemyPawn enemyPawnB = pair.Pawn2;
+#if DEBUG_PATHFINDING
+            bool pathFound = false;
+            List<Vector2Int> path = null;
+            yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, (aPathFound, aPath) => {
+                pathFound = aPathFound;
+                path = aPath;
+            }, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+#else
             bool pathFound = _pathfinder.FindPath(enemyPawnA, enemyPawnB, out List<Vector2Int> path,
                 _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+#endif
             if (pathFound)
             {
                 if (path.Count > 0)
                 {
                     path.RemoveAt(0);
-                    Vector2Int destCell = path.PickLastElement();
-                    List<SpriteRenderer> pathSprites = _pathfinder.CreatePathSprites(path, 0, 0);
-                    yield return board.MovePawnRoutine(enemyPawnA, destCell);
-                    movedEnemiesCount++;
                     if (path.Count > 0)
                     {
-                        Destroy(pathSprites.PickFirstElement().gameObject);
-                        destCell = path.PickFirstElement();
-                        yield return board.MovePawnRoutine(enemyPawnB, destCell);
-                        movedEnemiesCount++;
+                        List<SpriteRenderer> pathSprites = _pathfinder.CreatePathSprites(path, 1, 1);
+                        yield return MoveEnemyPawnsPairRoutine(pair, path);
+                        movedEnemiesCount += 2;
                     }
                     if (path.Count < 1)
                     {
-                        yield return new WaitForSeconds(0.5f);
-                        board.BoardScreen.ShowFailPopup();
-                        onEnd?.Invoke(movedEnemiesCount > 0);
-                        yield break;
+                        enemyReachedTarget = true;
+                        break;
                     }
                 }
             }
@@ -96,10 +144,15 @@ public class EnemyHandler : MonoBehaviour
                 surroundedEnemiesCount += pawnBSurrounded ? 1 : 0;
             }
         }
-        if (surroundedEnemiesCount == _enemyPawns.Count)
+        if (enemyReachedTarget)
         {
             yield return new WaitForSeconds(0.5f);
-            board.BoardScreen.ShowSuccessPopup();
+            onFail?.Invoke();
+        }
+        else if (surroundedEnemiesCount == _enemyPawns.Count)
+        {
+            yield return new WaitForSeconds(0.5f);
+            onSuccess?.Invoke();
         }
         onEnd?.Invoke(movedEnemiesCount > 0);
     }
