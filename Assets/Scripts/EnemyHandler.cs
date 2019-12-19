@@ -35,71 +35,92 @@ public class EnemyHandler : MonoBehaviour
 
     private IEnumerator MoveEnemyPawnsPairRoutine(EnemyPawnsPair pair, List<Vector2Int> path)
     {
-        Transform pawn1Transform = pair.Pawn1.transform;
-        Transform pawn2Transform = pair.Pawn2.transform;
-
-        Vector2Int pawn1BegCell = _tilemap.WorldToCell(pawn1Transform.position);
-        Vector2Int pawn1EndCell = path.PickLastElement();
-        Vector3 pawn1BegPos = pawn1Transform.position;
-        Vector3 pawn1EndPos = _tilemap.GetCellCenterWorld(pawn1EndCell);
-
-        Vector2Int pawn2BegCell = _tilemap.WorldToCell(pawn2Transform.position);
-        Vector2Int pawn2EndCell = path.Count > 0 ? path.PickFirstElement() : pawn1EndCell;
-        Vector3 pawn2BegPos = pawn2Transform.position;
-        Vector3 pawn2EndPos = _tilemap.GetCellCenterWorld(pawn2EndCell);
-
+        if (path.Count < 1)
+        {
+            yield break;
+        }
+        Vector2Int pawn1EndCell;
+        PawnTransition pawn1Transition = new PawnTransition(pair.Pawn1, _tilemap, pawn1EndCell = path.PickLastElement());
+        PawnTransition pawn2Transition = new PawnTransition(pair.Pawn2, _tilemap, path.Count > 0 ? path.PickFirstElement() : pawn1EndCell);
         float duration = 0.3f;
         yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
             float shift = Maths.GetTransition(TransitionType.COS_IN_PI_RANGE, transition);
-            pawn1Transform.position = Vector3.Lerp(pawn1BegPos, pawn1EndPos, shift);
-            pawn2Transform.position = Vector3.Lerp(pawn2BegPos, pawn2EndPos, shift);
+            pawn1Transition.Update(shift);
+            pawn2Transition.Update(shift);
         });
-        pawn1Transform.position = pawn1EndPos;
-        pawn2Transform.position = pawn2EndPos;
-
-        BoardTile tile;
-
-        if (tile = _tilemap.GetTile(pawn1BegCell))
-            tile.Content = null;
-        if (tile = _tilemap.GetTile(pawn1EndCell))
-            tile.Content = pawn1Transform.GetComponent<TileContent>();
-
-        if (tile = _tilemap.GetTile(pawn2BegCell))
-            tile.Content = null;
-        if (tile = _tilemap.GetTile(pawn2EndCell))
-            tile.Content = pawn2Transform.GetComponent<TileContent>();
+        pawn1Transition.Finish(_tilemap);
+        pawn2Transition.Finish(_tilemap);
     }
 
+    private IEnumerator MoveEnemyPawnsRoutine(List<PawnTransition> pawnTransitions)
+    {
+        float duration = 0.3f;
+        yield return CoroutineUtils.UpdateRoutine(duration, (elapsedTime, transition) => {
+            float shift = Maths.GetTransition(TransitionType.COS_IN_PI_RANGE, transition);
+            foreach (var pawnTransition in pawnTransitions)
+            {
+                pawnTransition.Update(shift);
+            }
+        });
+        foreach (var pawnTransition in pawnTransitions)
+        {
+            pawnTransition.Finish(_tilemap);
+        }
+    }
 
     public IEnumerator MoveEnemyPawnsRoutine(Action<bool> onEnd, Action onSuccess, Action onFail)
     {
         int surroundedEnemiesCount = 0;
         int movedEnemiesCount = 0;
         bool enemyReachedTarget = false;
-        for (int i = 0; i < _enemySingles.Count; i++)
+        _pathfinder.ClearSprites();
+
+        List<PathResult> pathResults = new List<PathResult>();
+        List<PawnTransition> pawnTransitions = new List<PawnTransition>();
+        List<Vector2Int> lockedCells = new List<Vector2Int>();
+        foreach (var enemyPawn in _enemySingles)
         {
-            EnemyPawn enemyPawn = _enemySingles[i];
-            bool pathFound = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, out List<Vector2Int> path,
+#if DEBUG_PATHFINDING
+            PathResult pathResult = null;
+            yield return _pathfinder.FindPathRoutine(enemyPawn, enemyPawn.Target, aPathResult => {
+                pathResult = aPathResult;
+            }, lockedCells, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+#else
+            PathResult pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, lockedCells,
                 _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
-            if (pathFound)
+#endif
+            pathResults.Add(pathResult);
+            var path = pathResult.Path;
+            if (pathResult.PathFound && path.Count > 0)
             {
-                if (path.Count > 0)
+                _pathfinder.CreatePathSprites(path, 1, 1);
+                PawnTransition pawnTransition = new PawnTransition(enemyPawn, _tilemap, path.PickLastElement());
+                pawnTransitions.Add(pawnTransition);
+                lockedCells.Add(pawnTransition.EndCell);
+            }
+        }
+        if (pawnTransitions.Count > 0)
+        {
+            yield return MoveEnemyPawnsRoutine(pawnTransitions);
+            movedEnemiesCount += pawnTransitions.Count;
+        }
+        for (int i = 0; i < pathResults.Count; i++)
+        {
+            EnemyPawn enemyPawn = _enemyPawns[i];
+            PathResult pathResult = pathResults[i];
+            var path = pathResult.Path;
+            if (pathResult.PathFound)
+            {
+                if (path.Count <= 1)
                 {
-                    _pathfinder.CreatePathSprites(path, 1, 1);
-                    Vector2Int destCell = path.PickLastElement();
-                    yield return MovePawnRoutine(enemyPawn, destCell);
-                    movedEnemiesCount++;
-                    if (path.Count <= 1)
-                    {
-                        enemyReachedTarget = true;
-                        break;
-                    }
+                    enemyReachedTarget = true;
+                    break;
                 }
             }
             else
             {
-                bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawn.Target, out path, _playerPawnsContainer, _enemyTargetsContainer);
-                bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(enemyPawn, out path, _playerPawnsContainer) : true;
+                bool targetSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawn.Target, _playerPawnsContainer, _enemyTargetsContainer).PathFound;
+                bool enemySurrounded = targetSurrounded ? !_pathfinder.FindPathToBoundsMin(enemyPawn, _playerPawnsContainer).PathFound : true;
                 surroundedEnemiesCount += enemySurrounded ? 1 : 0;
             }
         }
@@ -108,18 +129,16 @@ public class EnemyHandler : MonoBehaviour
             EnemyPawn enemyPawnA = pair.Pawn1;
             EnemyPawn enemyPawnB = pair.Pawn2;
 #if DEBUG_PATHFINDING
-            bool pathFound = false;
-            List<Vector2Int> path = null;
-            yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, (aPathFound, aPath) => {
-                pathFound = aPathFound;
-                path = aPath;
-            }, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            PathResult pathResult = null;
+            yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, aPathResult => {
+                pathResult = aPathResult;
+            }, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
-            bool pathFound = _pathfinder.FindPath(enemyPawnA, enemyPawnB, out List<Vector2Int> path,
-                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            PathResult pathResult = _pathfinder.FindPath(enemyPawnA, enemyPawnB, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #endif
-            if (pathFound)
+            if (pathResult.PathFound)
             {
+                var path = pathResult.Path;
                 if (path.Count > 0)
                 {
                     path.RemoveAt(0);
@@ -138,8 +157,8 @@ public class EnemyHandler : MonoBehaviour
             }
             else
             {
-                bool pawnASurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawnA, out path, _playerPawnsContainer, _enemyTargetsContainer);
-                bool pawnBSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawnB, out path, _playerPawnsContainer, _enemyTargetsContainer);
+                bool pawnASurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawnA, _playerPawnsContainer, _enemyTargetsContainer).PathFound;
+                bool pawnBSurrounded = !_pathfinder.FindPathToBoundsMin(enemyPawnB, _playerPawnsContainer, _enemyTargetsContainer).PathFound;
                 surroundedEnemiesCount += pawnASurrounded ? 1 : 0;
                 surroundedEnemiesCount += pawnBSurrounded ? 1 : 0;
             }

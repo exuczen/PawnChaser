@@ -8,6 +8,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public class PathResult : Tuple<bool, List<Vector2Int>>
+{
+    public PathResult(bool item1, List<Vector2Int> item2) : base(item1, item2) { }
+
+    public bool PathFound => Item1;
+    public List<Vector2Int> Path => Item2;
+}
+
 public class BoardPathfinder : MonoBehaviour
 {
     [SerializeField] private Transform _tileTextsContainer = default;
@@ -45,35 +53,35 @@ public class BoardPathfinder : MonoBehaviour
         _pathSpritesContainer.DestroyAllChildren();
     }
 
-    private IEnumerator FindPathRoutine(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, Action<bool, List<Vector2Int>> onEnd, params Transform[] contentContainers)
+    private IEnumerator FindPathRoutine(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, Action<PathResult> onEnd,
+        List<Vector2Int> lockedCells, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
-            onEnd?.Invoke(true, new List<Vector2Int>());
+            onEnd?.Invoke(new PathResult(true, new List<Vector2Int>()));
         }
         else
         {
             begXY -= bounds.Min;
             endXY -= bounds.Min;
-            var nodes = CreateCellNodes(begXY, endXY, bounds, contentContainers);
+            var nodes = CreateCellNodes(begXY, endXY, bounds, lockedCells, contentContainers);
 
-            ClearSprites();
+            _tileTextsContainer.transform.DestroyAllChildren();
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
 
             yield return UpdateCellNodesRoutine(nodes, bounds, begXY, endXY, targetReached => {
                 ClearTilesMeshTexts(bounds);
-                onEnd?.Invoke(targetReached, CreatePath(nodes, bounds, begXY, endXY));
+                onEnd?.Invoke(new PathResult(targetReached, CreatePath(nodes, bounds, begXY, endXY)));
             });
         }
     }
 
-    private bool FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, out List<Vector2Int> path, params Transform[] contentContainers)
+    private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<Vector2Int> lockedCells, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
-            path = new List<Vector2Int>();
-            return true;
+            return new PathResult(true, new List<Vector2Int>());
         }
         else
         {
@@ -81,9 +89,9 @@ public class BoardPathfinder : MonoBehaviour
             endXY -= bounds.Min;
             //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
             //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
-            var nodes = CreateCellNodes(begXY, endXY, bounds, contentContainers);
+            var nodes = CreateCellNodes(begXY, endXY, bounds, lockedCells, contentContainers);
 
-            ClearSprites();
+            _tileTextsContainer.transform.DestroyAllChildren();
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
             bool targetReached = false;
@@ -92,33 +100,34 @@ public class BoardPathfinder : MonoBehaviour
                 nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, out targetReached);
             }
             ClearTilesMeshTexts(bounds);
-            path = CreatePath(nodes, bounds, begXY, endXY);
-            return targetReached;
+            return new PathResult(targetReached, CreatePath(nodes, bounds, begXY, endXY));
         }
     }
 
-    public IEnumerator FindPathRoutine(TileContent begTileContent, TileContent endTileContent, Action<bool, List<Vector2Int>> onEnd, params Transform[] contentContainers)
+    public IEnumerator FindPathRoutine(TileContent begTileContent, TileContent endTileContent, Action<PathResult> onEnd,
+        List<Vector2Int> lockedCells, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        yield return FindPathRoutine(begXY, endXY, bounds, onEnd, contentContainers);
+        yield return FindPathRoutine(begXY, endXY, bounds, onEnd, lockedCells, contentContainers);
     }
 
-    public bool FindPath(TileContent begTileContent, TileContent endTileContent, out List<Vector2Int> path, params Transform[] contentContainers)
+    public PathResult FindPath(TileContent begTileContent, TileContent endTileContent,
+        List<Vector2Int> lockedCells, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        return FindPath(begXY, endXY, bounds, out path, contentContainers);
+        return FindPath(begXY, endXY, bounds, lockedCells, contentContainers);
     }
 
-    public bool FindPathToBoundsMin(TileContent begTileContent, out List<Vector2Int> path, params Transform[] contentContainers)
+    public PathResult FindPathToBoundsMin(TileContent begTileContent, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
-        return FindPath(begXY, endXY, bounds, out path, contentContainers);
+        return FindPath(begXY, endXY, bounds, null, contentContainers);
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
@@ -151,7 +160,7 @@ public class BoardPathfinder : MonoBehaviour
         return path;
     }
 
-    private CellNode[] CreateCellNodes(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, params Transform[] contentContainers)
+    private CellNode[] CreateCellNodes(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<Vector2Int> lockedCells, params Transform[] contentContainers)
     {
         var nodes = new CellNode[bounds.Size.x * bounds.Size.y];
         for (int i = 0; i < nodes.Length; i++)
@@ -164,6 +173,15 @@ public class BoardPathfinder : MonoBehaviour
             {
                 Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
                 Vector2Int xy = cell - bounds.Min;
+                int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
+                nodes[nodeIndex].locked = true;
+            }
+        }
+        if (lockedCells != null)
+        {
+            foreach (var lockedCell in lockedCells)
+            {
+                Vector2Int xy = lockedCell - bounds.Min;
                 int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
                 nodes[nodeIndex].locked = true;
             }

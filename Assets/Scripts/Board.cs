@@ -118,8 +118,9 @@ public class Board : MonoBehaviour
         {
             pawn.SetPreviousCellPosition(_tilemap);
         }
+        //Debug.Log(GetType() + ".SetPawnsPreviousPositions: " + _playerPawns[0].CellsStackCount);
         //Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
-        if (movedPlayerPawnsCount > 0)
+        if (_playerPawns[0].CellsStackCount > 1)
         {
             if (_playerMovesLeft < _playerMovesInTurn)
                 _playerMovesLeft += movedPlayerPawnsCount;
@@ -198,7 +199,7 @@ public class Board : MonoBehaviour
 
     public void LoadNextLevel()
     {
-        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 4);
+        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 5);
     }
 
     public void ResetLevel()
