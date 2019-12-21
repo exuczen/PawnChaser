@@ -29,6 +29,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     protected abstract T CreateTile(int x, int y);
     public abstract void SetTilesContent();
+    protected abstract void ResetCamera();
     protected virtual void OnLateUpdate() { }
     protected virtual void OnAwake() { }
     protected virtual void OnStart() { }
@@ -57,10 +58,9 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     public void ResetTilemap()
     {
-        Vector3 cameraPosition = new Vector3(0f, 0f, _camera.transform.position.z);
-        _camera.transform.position = cameraPosition;
-        _cameraCell = WorldToCell(cameraPosition);
+        ResetCamera();
         FillMapInView();
+        _cameraCell = WorldToCell(_camera.transform.position);
     }
 
     public Vector2Int WorldToCell(Vector3 worldPos)

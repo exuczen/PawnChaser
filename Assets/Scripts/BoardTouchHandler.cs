@@ -18,8 +18,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
 
     private BoardTilemap _tilemap = default;
     private PlayerPawn _selectedPawn = default;
-    private Vector2Int _selectedCell = default;
-    private int _selectedPawnPointerId = default;
+    private int _selectedPawnPointerId = int.MinValue;
     private Coroutine _movePawnRoutine = default;
     //private int _playerMovesLeft = default;
 
@@ -87,7 +86,6 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         EventSystem currentEventSystem = EventSystem.current;
         currentEventSystem.enabled = false;
         yield return _board.MovePlayerPawnRoutine(pawn, destCell, () => {
-            //_selectedCell = destCell;
             _movePawnRoutine = null;
             currentEventSystem.enabled = true;
         });
@@ -99,7 +97,6 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
 
     public void OnDrag(PointerEventData eventData)
     {
-        _targetCircle.gameObject.SetActive(false);
         if (_movePawnRoutine != null)
         {
             return;
@@ -107,10 +104,12 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         if (_selectedPawn && eventData.pointerId == _selectedPawnPointerId)
         {
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
+            HideImage(_targetCircle);
             Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
+            Vector2Int pawnCell = _tilemap.WorldToCell(_selectedPawn.transform.position);
             Vector2Int destCell = _tilemap.WorldToCell(worldPoint);
             //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
-            if (destCell != _selectedCell)
+            if (destCell != pawnCell)
             {
                 Vector2 ray = worldPoint - _selectedPawn.transform.position;
                 float rayAngle = Vector2.SignedAngle(ray, Vector2.up);
@@ -123,7 +122,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
                 int ngbrIndex = (int)((absRayAngle + deltaAngle / 2f) / deltaAngle);
                 ngbrIndex = Mathf.Min(ngbrIndex, ngbrsDeltaXY.Length - 1);
                 Vector2Int deltaXY = ngbrsDeltaXY[ngbrIndex];
-                destCell = _selectedCell + deltaXY;
+                destCell = pawnCell + deltaXY;
                 if (!_tilemap.GetTile(destCell).Content)
                 {
                     Vector3 destCellCenter = _tilemap.GetCellCenterWorld(destCell);
@@ -155,25 +154,34 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
                 {
                     _selectedPawn = tile.Content as PlayerPawn;
                     _selectedPawnPointerId = eventData.pointerId;
+                    HideImage(_targetCircle);
                     ShowImageAtPosition(_selectionCircle, _selectedPawn.transform.position);
                 }
-                _selectedCell = cell;
-                Debug.Log(GetType() + ".OnPonterDown: cell:" + _selectedCell + " pointerId: " + _selectedPawnPointerId);
+                Debug.Log(GetType() + ".OnPonterDown: cell:" + cell + " pointerId: " + eventData.pointerId);
             }
         }
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (_selectedPawn && _selectedPawnPointerId == eventData.pointerId && _targetCircle.gameObject.activeSelf)
+        if (_selectedPawn && _selectedPawnPointerId == eventData.pointerId)
         {
-            Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
-            Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
-            _movePawnRoutine = StartCoroutine(MovePlayerPawnRoutine(_selectedPawn, destCell));
+            if (_targetCircle.gameObject.activeSelf)
+            {
+                Vector3 destCellPos = Camera.main.ScreenToWorldPoint(_targetCircle.transform.position);
+                Vector2Int destCell = _tilemap.WorldToCell(destCellPos);
+                _movePawnRoutine = StartCoroutine(MovePlayerPawnRoutine(_selectedPawn, destCell));
+            }
+            HideImage(_targetCircle);
+            HideImage(_selectionCircle);
+            _selectedPawn = null;
+            _selectedPawnPointerId = int.MinValue;
         }
-        _targetCircle.gameObject.SetActive(false);
-        _selectionCircle.gameObject.SetActive(false);
-        _selectedPawn = null;
+    }
+
+    private void HideImage(Image image)
+    {
+        image.gameObject.SetActive(false);
     }
 
     private void ShowImageAtPosition(Image image, Vector3 worldPoint)

@@ -2,6 +2,7 @@
 using MustHave.Utilities;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -27,6 +28,14 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     protected override void OnStart()
     {
+    }
+
+    protected override void ResetCamera()
+    {
+        Bounds2 contentBounds = GetContentBounds();
+        Vector3 cameraPosition = new Vector3(contentBounds.Center.x, 0f, _camera.transform.position.z);
+        _camera.transform.position = cameraPosition;
+        _cameraCell = WorldToCell(cameraPosition);
     }
 
     public override void SetTilesContent()
@@ -56,6 +65,41 @@ public class BoardTilemap : GridTilemap<BoardTile>
                     boardTile.Content = child.GetComponent<TileContent>();
             }
         }
+    }
+
+    private Bounds2 GetContentBounds()
+    {
+        Bounds2 bounds = new Bounds2();
+        List<Transform> containers = new List<Transform>();
+        foreach (Transform container in transform)
+        {
+            containers.Add(container);
+        }
+        Transform contentContainer = containers.Find(c => c.childCount > 0);
+        if (contentContainer)
+        {
+            Transform containerChild = contentContainer.GetChild(0);
+            Vector2 min = containerChild.position;
+            Vector2 max = containerChild.position;
+            bounds.SetMinMax(min, max);
+            foreach (Transform container in transform)
+            {
+                bounds = GetChildrenBounds(bounds.Min, bounds.Max, container);
+            }
+        }
+        return bounds;
+    }
+
+    private Bounds2 GetChildrenBounds(Vector2 min, Vector2 max, Transform parent)
+    {
+        foreach (Transform child in parent)
+        {
+            min = Maths.Min(child.position, min);
+            max = Maths.Max(child.position, max);
+        }
+        Bounds2 bounds = new Bounds2();
+        bounds.SetMinMax(min, max);
+        return bounds;
     }
 
     public Bounds2Int GetChildrenCellBounds(Vector2Int min, Vector2Int max, Transform parent)
