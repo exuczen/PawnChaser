@@ -1,4 +1,5 @@
-﻿//#define DEBUG_SHOW_DISTANCES
+﻿//#define DEBUG_SHOW_CELL_ENTER_RISK
+//#define DEBUG_SHOW_DISTANCES
 //#define DEBUG_DISTANCE_INT
 
 using MustHave;
@@ -26,19 +27,27 @@ public class BoardPathfinder : MonoBehaviour
     private readonly float SQRT2 = Mathf.Sqrt(2f);
 
     private BoardTilemap _tilemap = default;
+    private bool _cellNodesEnterRisk = default;
 
-    private readonly Vector2Int[] _cellNgbrsDeltaXY = new Vector2Int[]
+    private static readonly Vector2Int[] _cellNgbrsDeltaXY = new Vector2Int[]
     {
-        new Vector2Int(-1, -1), new Vector2Int(0, -1), new Vector2Int(1, -1),
-        new Vector2Int(-1, 0), new Vector2Int(1, 0),
-        new Vector2Int(-1, 1), new Vector2Int(0, 1), new Vector2Int(1, 1),
+        new Vector2Int(-1, 0), new Vector2Int(1, 0),new Vector2Int(0, -1), new Vector2Int(0, 1),
+        new Vector2Int(-1, -1),  new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(1, 1)
     };
 
-    private struct CellNode
+    public bool CellNodesEnterRisk { get => _cellNodesEnterRisk; set => _cellNodesEnterRisk = value; }
+
+    private class CellNode
     {
-        public bool locked;
-        public bool @checked;
-        public float distance;
+        public bool locked = false;
+        public bool @checked = false;
+        public float distance = float.MaxValue;
+        public bool[] ngbrsEnterRisk = new bool[8];
+
+        public bool GetNgbrEnterRisk(int ngbrIndex)
+        {
+            return ngbrIndex >= 0 && ngbrIndex < 8 ? ngbrsEnterRisk[ngbrIndex] : false;
+        }
     }
 
     private void Awake()
@@ -54,7 +63,7 @@ public class BoardPathfinder : MonoBehaviour
     }
 
     private IEnumerator FindPathRoutine(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, Action<PathResult> onEnd,
-        List<Vector2Int> lockedCells, params Transform[] contentContainers)
+        List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -62,14 +71,12 @@ public class BoardPathfinder : MonoBehaviour
         }
         else
         {
+            _tileTextsContainer.transform.DestroyAllChildren();
             begXY -= bounds.Min;
             endXY -= bounds.Min;
-            var nodes = CreateCellNodes(begXY, endXY, bounds, lockedCells, contentContainers);
-
-            _tileTextsContainer.transform.DestroyAllChildren();
+            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, contentContainers);
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
-
             yield return UpdateCellNodesRoutine(nodes, bounds, begXY, endXY, targetReached => {
                 ClearTilesMeshTexts(bounds);
                 onEnd?.Invoke(new PathResult(targetReached, CreatePath(nodes, bounds, begXY, endXY)));
@@ -77,7 +84,7 @@ public class BoardPathfinder : MonoBehaviour
         }
     }
 
-    private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<Vector2Int> lockedCells, params Transform[] contentContainers)
+    private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -85,13 +92,12 @@ public class BoardPathfinder : MonoBehaviour
         }
         else
         {
+            _tileTextsContainer.transform.DestroyAllChildren();
             begXY -= bounds.Min;
             endXY -= bounds.Min;
             //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
             //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
-            var nodes = CreateCellNodes(begXY, endXY, bounds, lockedCells, contentContainers);
-
-            _tileTextsContainer.transform.DestroyAllChildren();
+            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, contentContainers);
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
             bool targetReached = false;
@@ -105,25 +111,26 @@ public class BoardPathfinder : MonoBehaviour
     }
 
     public IEnumerator FindPathRoutine(TileContent begTileContent, TileContent endTileContent, Action<PathResult> onEnd,
-        List<Vector2Int> lockedCells, params Transform[] contentContainers)
+        List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        yield return FindPathRoutine(begXY, endXY, bounds, onEnd, lockedCells, contentContainers);
+        yield return FindPathRoutine(begXY, endXY, bounds, onEnd, pawnTransitions, contentContainers);
     }
 
     public PathResult FindPath(TileContent begTileContent, TileContent endTileContent,
-        List<Vector2Int> lockedCells, params Transform[] contentContainers)
+        List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        return FindPath(begXY, endXY, bounds, lockedCells, contentContainers);
+        return FindPath(begXY, endXY, bounds, pawnTransitions, contentContainers);
     }
 
     public PathResult FindPathToBoundsMin(TileContent begTileContent, params Transform[] contentContainers)
     {
+        _cellNodesEnterRisk = false;
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
@@ -137,7 +144,7 @@ public class BoardPathfinder : MonoBehaviour
         if (begXY != endXY && endNode.distance < float.MaxValue / 2f)
         {
             //Debug.Log(GetType() + ".GetPath: " + begXY + "->" + endXY);
-            ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
+            CellNode begNode = nodes[GetCellNodeIndex(begXY, bounds.Size)];
             bool begNodeLocked = begNode.locked;
             begNode.locked = false;
 
@@ -160,38 +167,108 @@ public class BoardPathfinder : MonoBehaviour
         return path;
     }
 
-    private CellNode[] CreateCellNodes(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<Vector2Int> lockedCells, params Transform[] contentContainers)
+    private CellNode[] CreateCellNodes(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         var nodes = new CellNode[bounds.Size.x * bounds.Size.y];
         for (int i = 0; i < nodes.Length; i++)
         {
-            nodes[i].distance = float.MaxValue;
+            nodes[i] = new CellNode();
         }
         foreach (Transform container in contentContainers)
         {
             foreach (Transform pawnTransform in container)
             {
                 Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
-                Vector2Int xy = cell - bounds.Min;
-                int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
+                int nodeIndex = GetCellNodeIndex(cell - bounds.Min, bounds.Size);
                 nodes[nodeIndex].locked = true;
             }
         }
-        if (lockedCells != null)
+        if (pawnTransitions != null)
         {
-            foreach (var lockedCell in lockedCells)
+            int nodeIndex;
+            foreach (var pawnTransition in pawnTransitions)
             {
-                Vector2Int xy = lockedCell - bounds.Min;
-                int nodeIndex = GetCellNodeIndex(xy, bounds.Size);
+                nodeIndex = GetCellNodeIndex(pawnTransition.EndCell - bounds.Min, bounds.Size);
                 nodes[nodeIndex].locked = true;
+                nodeIndex = GetCellNodeIndex(pawnTransition.BegCell - bounds.Min, bounds.Size);
+                nodes[nodeIndex].locked = false;
             }
         }
-        ref CellNode begNode = ref nodes[GetCellNodeIndex(begXY, bounds.Size)];
-        ref CellNode endNode = ref nodes[GetCellNodeIndex(endXY, bounds.Size)];
+        CellNode begNode = nodes[GetCellNodeIndex(begXY, bounds.Size)];
+        CellNode endNode = nodes[GetCellNodeIndex(endXY, bounds.Size)];
         begNode.distance = 0f;
         begNode.locked = false;
         endNode.locked = false;
+
+        if (_cellNodesEnterRisk)
+            SetCellNodesEnterRisks(nodes, bounds);
+
         return nodes;
+    }
+
+    private void SetCellNodesEnterRisks(CellNode[] nodes, Bounds2Int bounds)
+    {
+        Vector2Int size = bounds.Size;
+        int columns = size.x;
+        for (int y = 1; y < size.y - 1; y++)
+        {
+            for (int x = 1; x < size.x - 1; x++)
+            {
+                CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
+                if (cellNode.locked)
+                {
+                    continue;
+                }
+                bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+                    ngbrDeltaXY.x = -ngbrDeltaXY.x;
+                    ngbrDeltaXY.y = -ngbrDeltaXY.y;
+                    int dx = ngbrDeltaXY.x;
+                    int dy = ngbrDeltaXY.y;
+                    int absdx = Mathf.Abs(ngbrDeltaXY.x);
+                    int absdy = Mathf.Abs(ngbrDeltaXY.y);
+                    int lockedCount = 0;
+                    if (nodes[GetCellNodeIndex(x - absdy, y - absdx, columns)].locked &&
+                        nodes[GetCellNodeIndex(x + absdy, y + absdx, columns)].locked)
+                    {
+                        lockedCount = 2;
+                        if (absdx > absdy)
+                        {
+                            for (int j = -1; j < 2; j++)
+                            {
+                                lockedCount += nodes[GetCellNodeIndex(x - dx, y + j, columns)].locked ? 1 : 0;
+                            }
+                        }
+                        else
+                        {
+                            for (int j = -1; j < 2; j++)
+                            {
+                                lockedCount += nodes[GetCellNodeIndex(x + j, y - dy, columns)].locked ? 1 : 0;
+                            }
+                        }
+                    }
+                    ngbrsEnterRisk[i] = lockedCount >= 4;
+                }
+                ngbrsEnterRisk[4] = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
+                ngbrsEnterRisk[5] = ngbrsEnterRisk[1] || ngbrsEnterRisk[2];
+                ngbrsEnterRisk[6] = ngbrsEnterRisk[0] || ngbrsEnterRisk[3];
+                ngbrsEnterRisk[7] = ngbrsEnterRisk[1] || ngbrsEnterRisk[3];
+#if DEBUG_SHOW_CELL_ENTER_RISK
+                Vector2Int cell = new Vector2Int(x + bounds.Min.x, y + bounds.Min.y);
+                int[] risks = new int[ngbrsEnterRisk.Length];
+                for (int i = 0; i < ngbrsEnterRisk.Length; i++)
+                {
+                    risks[i] = ngbrsEnterRisk[i] ? 1 : 0;
+                }
+                string risksText = risks[5] + "" + risks[2] + "" + risks[4] + "\n";
+                risksText += risks[1] + "0" + risks[0] + "\n";
+                risksText += risks[7] + "" + risks[3] + "" + risks[6];
+                SetTileMeshText(cell, risksText);
+#endif
+            }
+        }
     }
 
     private HashSet<Vector2Int> UpdateCellNodes(CellNode[] nodes, Bounds2Int bounds, HashSet<Vector2Int> nodesXY, Vector2Int targetXY, out bool targetReached)
@@ -201,17 +278,19 @@ public class BoardPathfinder : MonoBehaviour
         foreach (var nodeXY in nodesXY)
         {
             int nodeIndex = GetCellNodeIndex(nodeXY, bounds.Size);
-            ref CellNode node = ref nodes[nodeIndex];
+            CellNode node = nodes[nodeIndex];
             node.@checked = true;
             nextNodesXY.Remove(nodeXY);
-            foreach (var ngbrDeltaXY in _cellNgbrsDeltaXY)
+            for (int i = 0; i < _cellNgbrsDeltaXY.Length; i++)
             {
+                Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
                 Vector2Int ngbrXY = nodeXY + ngbrDeltaXY;
                 if (CellNodeInBounds(ngbrXY, bounds.Size))
                 {
                     int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
-                    ref CellNode ngbrNode = ref nodes[ngbrNodeIndex];
-                    if (!ngbrNode.locked && !ngbrNode.@checked)
+                    CellNode ngbrNode = nodes[ngbrNodeIndex];
+                    bool ngbrEnterRisk = _cellNodesEnterRisk && ngbrNode.GetNgbrEnterRisk(i);
+                    if (!ngbrNode.locked && !ngbrEnterRisk && !ngbrNode.@checked)
                     {
                         if (!nextNodesXY.Contains(ngbrXY))
                         {
@@ -324,13 +403,13 @@ public class BoardPathfinder : MonoBehaviour
         return x + y * columns;
     }
 
-    private int GetCellNodeIndex(Vector2Int xy, Vector2Int size)
+    private int GetCellNodeIndex(Vector2Int cell, Vector2Int size)
     {
-        return xy.x + xy.y * size.x;
+        return cell.x + cell.y * size.x;
     }
 
-    private bool CellNodeInBounds(Vector2Int xy, Vector2Int size)
+    private bool CellNodeInBounds(Vector2Int cell, Vector2Int size)
     {
-        return xy.x >= 0 && xy.x < size.x && xy.y >= 0 && xy.y < size.y;
+        return cell.x >= 0 && cell.x < size.x && cell.y >= 0 && cell.y < size.y;
     }
 }

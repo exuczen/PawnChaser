@@ -80,15 +80,21 @@ public class EnemyHandler : MonoBehaviour
         List<Vector2Int> lockedCells = new List<Vector2Int>();
         foreach (var enemyPawn in _enemySingles)
         {
-#if DEBUG_PATHFINDING
             PathResult pathResult = null;
-            yield return _pathfinder.FindPathRoutine(enemyPawn, enemyPawn.Target, aPathResult => {
-                pathResult = aPathResult;
-            }, lockedCells, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            for (int i = 0; i < 2; i++)
+            {
+                _pathfinder.CellNodesEnterRisk = i == 0;
+#if DEBUG_PATHFINDING
+                yield return _pathfinder.FindPathRoutine(enemyPawn, enemyPawn.Target, aPathResult => {
+                    pathResult = aPathResult;
+                }, pawnTransitions, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
-            PathResult pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, lockedCells,
-                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+                pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, pawnTransitions,
+                    _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #endif
+                if (pathResult.PathFound)
+                    break;
+            }
             pathResults.Add(pathResult);
             var path = pathResult.Path;
             if (pathResult.PathFound && path.Count > 0)
@@ -128,14 +134,20 @@ public class EnemyHandler : MonoBehaviour
         {
             EnemyPawn enemyPawnA = pair.Pawn1;
             EnemyPawn enemyPawnB = pair.Pawn2;
-#if DEBUG_PATHFINDING
             PathResult pathResult = null;
-            yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, aPathResult => {
-                pathResult = aPathResult;
-            }, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            for (int i = 0; i < 2; i++)
+            {
+                _pathfinder.CellNodesEnterRisk = i == 0;
+#if DEBUG_PATHFINDING
+                yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, aPathResult => {
+                    pathResult = aPathResult;
+                }, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
-            PathResult pathResult = _pathfinder.FindPath(enemyPawnA, enemyPawnB, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+                pathResult = _pathfinder.FindPath(enemyPawnA, enemyPawnB, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #endif
+                if (pathResult.PathFound)
+                    break;
+            }
             if (pathResult.PathFound)
             {
                 var path = pathResult.Path;
