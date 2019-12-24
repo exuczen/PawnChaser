@@ -139,7 +139,6 @@ public class BoardTilemap : GridTilemap<BoardTile>
         {
             if (EditorApplicationUtils.ApplicationIsPlaying)
             {
-                ResetTilemap();
                 foreach (Transform container in _tilemap.transform)
                 {
                     container.DestroyAllChildren();
@@ -164,6 +163,11 @@ public class BoardTilemap : GridTilemap<BoardTile>
             for (int i = 0; i < enemyPawnsData.Length; i++)
             {
                 _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyPawnsData[i].cell, this, _enemyPawnsContainer);
+            }
+            ResetCamera();
+            if (EditorApplicationUtils.ApplicationIsPlaying)
+            {
+                ResetTilemap();
             }
             SetTilesContent();
             for (int i = 0; i < enemyPawnsData.Length; i++)

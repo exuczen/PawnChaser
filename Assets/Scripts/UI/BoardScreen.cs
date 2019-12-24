@@ -10,6 +10,7 @@ public class BoardScreen : ScreenScript
     [SerializeField] private Button _undoMovesButton = default;
     [SerializeField] private Button _skipMoveButton = default;
     [SerializeField] private BoardTouchHandler _boardTouchHandler = default;
+    [SerializeField] private Text _playerMovesLeftText = default;
 
     private Board _board = default;
 
@@ -18,7 +19,7 @@ public class BoardScreen : ScreenScript
         _board = _boardTouchHandler.Board;
         _board.BoardScreen = this;
         _optionsButton.onClick.AddListener(OnOptionsButtonClick);
-        _undoMovesButton.onClick.AddListener(_board.SetPawnsPreviousPositions);
+        _undoMovesButton.onClick.AddListener(_board.SetPreviousBoardState);
         _skipMoveButton.onClick.AddListener(_board.SkipPlayerMove);
     }
 
@@ -49,5 +50,10 @@ public class BoardScreen : ScreenScript
                     _board.ResetLevel();
                 }))
             .Show();
+    }
+
+    public void SetPlayerMovesLeft(int count)
+    {
+        _playerMovesLeftText.text = count.ToString();
     }
 }

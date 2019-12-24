@@ -1,6 +1,4 @@
-﻿#define DUBUG_LEVEL
-
-using MustHave.UI;
+﻿using MustHave.UI;
 using MustHave.Utilities;
 using System;
 using System.Collections;
@@ -30,8 +28,9 @@ public class Board : MonoBehaviour
     private bool _pawnsPositionsSaved = default;
     private List<EnemyPawn> _enemyPawns = new List<EnemyPawn>();
     private List<PlayerPawn> _playerPawns = new List<PlayerPawn>();
-    private BoardScreen _boardScreen = default;
+    private List<int> _playerMovesLeftStack = new List<int>();
     private int _playerMovesLeft = default;
+    private BoardScreen _boardScreen = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
     public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
@@ -46,27 +45,23 @@ public class Board : MonoBehaviour
 
     private void Start()
     {
-#if DUBUG_LEVEL
-        OnLevelLoaded(null);
-#else
         LoadLevelFromJson(_levelIndex);
-#endif
     }
 
     public IEnumerator MovePlayerPawnRoutine(PlayerPawn pawn, Vector2Int destCell, Action onEnd = null)
     {
         yield return pawn.MoveRoutine(_tilemap, destCell);
-        _playerMovesLeft = Mathf.Max(_playerMovesLeft - 1, 0);
+        SetPlayerMovesLeft(Mathf.Max(_playerMovesLeft - 1, 0));
         if (_playerMovesLeft > 0)
         {
-            SavePawnsPositions();
+            SaveBoardState();
             onEnd?.Invoke();
         }
         else
         {
             MoveEnemyPawns(enemiesMoved => {
-                _playerMovesLeft = enemiesMoved ? _playerMovesInTurn : 1;
-                SavePawnsPositions();
+                SetPlayerMovesLeft(enemiesMoved ? _playerMovesInTurn : 1);
+                SaveBoardState();
                 onEnd?.Invoke();
             });
         }
@@ -77,19 +72,26 @@ public class Board : MonoBehaviour
         StartCoroutine(_enemyHandler.MoveEnemyPawnsRoutine(onEnd, _boardScreen.ShowSuccessPopup, _boardScreen.ShowFailPopup));
     }
 
+    private void SetPlayerMovesLeft(int count)
+    {
+        _playerMovesLeft = count;
+        if (count > 0)
+            _boardScreen.SetPlayerMovesLeft(count);
+    }
+
     public void SkipPlayerMove()
     {
         EventSystem currentEventSystem = EventSystem.current;
         currentEventSystem.enabled = false;
         MoveEnemyPawns(enemiesMoved => {
-            _playerMovesLeft = _playerMovesInTurn;
+            SetPlayerMovesLeft(_playerMovesInTurn);
             if (enemiesMoved)
-                SavePawnsPositions();
+                SaveBoardState();
             currentEventSystem.enabled = true;
         });
     }
 
-    public void SavePawnsPositions()
+    public void SaveBoardState()
     {
         foreach (PlayerPawn pawn in _playerPawns)
         {
@@ -99,38 +101,37 @@ public class Board : MonoBehaviour
         {
             pawn.AddCellPositionToStack(_tilemap);
         }
+        _playerMovesLeftStack.Add(_playerMovesLeft);
         _pawnsPositionsSaved = true;
     }
 
-    public void SetPawnsPreviousPositions()
+    public void SetPreviousBoardState()
     {
         if (_pawnsPositionsSaved)
         {
             _pawnsPositionsSaved = false;
             _pathfinder.ClearSprites();
         }
-        int movedPlayerPawnsCount = 0;
+        //int movedPlayerPawnsCount = 0;
         foreach (PlayerPawn pawn in _playerPawns)
         {
-            movedPlayerPawnsCount += pawn.SetPreviousCellPosition(_tilemap) ? 1 : 0;
+            //movedPlayerPawnsCount += pawn.SetPreviousCellPosition(_tilemap) ? 1 : 0;
+            pawn.SetPreviousCellPosition(_tilemap);
         }
         foreach (EnemyPawn pawn in _enemyPawns)
         {
             pawn.SetPreviousCellPosition(_tilemap);
         }
         //Debug.Log(GetType() + ".SetPawnsPreviousPositions: " + _playerPawns[0].CellsStackCount);
-        //Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
-        if (_playerPawns[0].CellsStackCount > 1)
+
+        if (_playerMovesLeftStack.Count > 1)
         {
-            if (_playerMovesLeft < _playerMovesInTurn)
-                _playerMovesLeft += movedPlayerPawnsCount;
-            else
-                _playerMovesLeft = movedPlayerPawnsCount;
-            _playerMovesLeft = Mathf.Min(_playerMovesLeft, _playerMovesInTurn);
+            _playerMovesLeftStack.RemoveAt(_playerMovesLeftStack.Count - 1);
+            SetPlayerMovesLeft(_playerMovesLeftStack[_playerMovesLeftStack.Count - 1]);
         }
         else
         {
-            _playerMovesLeft = _playerMovesInTurn;
+            SetPlayerMovesLeft(_playerMovesInTurn);
         }
         //Debug.Log(GetType() + ".SetPawnsPreviousPositions:" + _playerMovesLeft);
     }
@@ -143,7 +144,6 @@ public class Board : MonoBehaviour
 
     public void LoadLevelFromJson(int levelIndex)
     {
-        //BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
         BoardLevel boardLevel = _tilemap.LoadLevelFromJson(levelIndex);
         if (boardLevel != null)
         {
@@ -177,17 +177,13 @@ public class Board : MonoBehaviour
         {
             _playerMovesInTurn = boardLevel.PlayerMovesInTurn;
         }
-        else if (EditorApplicationUtils.ApplicationIsPlaying)
-        {
-            _tilemap.ResetTilemap();
-            _tilemap.SetTilesContent();
-        }
+        SetPlayerMovesLeft(_playerMovesInTurn);
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
-            _playerMovesLeft = _playerMovesInTurn;
+            _playerMovesLeftStack.Clear();
             _pathfinder.ClearSprites();
             AddPawnsToLists();
-            SavePawnsPositions();
+            SaveBoardState();
         }
 #if UNITY_EDITOR
         else

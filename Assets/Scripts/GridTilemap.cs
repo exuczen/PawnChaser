@@ -58,9 +58,8 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     public void ResetTilemap()
     {
-        ResetCamera();
-        FillMapInView();
         _cameraCell = WorldToCell(_camera.transform.position);
+        FillMapInView();
     }
 
     public Vector2Int WorldToCell(Vector3 worldPos)
