@@ -20,7 +20,6 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
     private PlayerPawn _selectedPawn = default;
     private int _selectedPawnPointerId = int.MinValue;
     private Coroutine _movePawnRoutine = default;
-    //private int _playerMovesLeft = default;
 
     public Board Board { get => _board; }
 
@@ -56,7 +55,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
     {
         Camera camera = Camera.main;
         Vector3 worldPoint;
-        if (camera.orthographic && camera.transform.rotation == Quaternion.identity)
+        if (camera.orthographic && camera.transform.rotation == _tilemap.transform.rotation)
         {
             worldPoint = camera.ScreenToWorldPoint(touchPos);
         }

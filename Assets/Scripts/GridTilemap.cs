@@ -30,6 +30,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
     protected abstract T CreateTile(int x, int y);
     public abstract void SetTilesContent();
     protected abstract void ResetCamera();
+    protected abstract Vector2Int GetCameraCell();
     protected virtual void OnLateUpdate() { }
     protected virtual void OnAwake() { }
     protected virtual void OnStart() { }
@@ -58,7 +59,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     public void ResetTilemap()
     {
-        _cameraCell = WorldToCell(_camera.transform.position);
+        _cameraCell = GetCameraCell();
         FillMapInView();
     }
 
@@ -182,7 +183,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
             UpdateTiles(begY, endY, -halfXCount, halfXCount, (x, y) => {
                 Vector3Int srcXY = new Vector3Int(x + camPrevCell.x, y + srcYOffset, 0);
                 Vector3Int dstXY = new Vector3Int(x + camPrevCell.x, y + camCurrCell.y, 0);
-                GridTile tile = GetTile(srcXY);
+                GridTile tile = GetTile(srcXY) ?? CreateTile(x, y);
                 tile.Content = null;
                 _tilemap.SetTile(dstXY, tile);
                 _tilemap.SetTile(srcXY, null);
@@ -220,7 +221,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
             UpdateTiles(-halfYCount, halfYCount, begX, endX, (x, y) => {
                 Vector3Int srcXY = new Vector3Int(x + srcXOffset, y + camCurrCell.y, 0);
                 Vector3Int dstXY = new Vector3Int(x + camCurrCell.x, y + camCurrCell.y, 0);
-                GridTile tile = GetTile(srcXY);// ?? CreateTile(x, y);
+                GridTile tile = GetTile(srcXY) ?? CreateTile(x, y);
                 tile.Content = null;
                 _tilemap.SetTile(dstXY, tile);
                 _tilemap.SetTile(srcXY, null);
@@ -243,7 +244,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
             Vector2Int camPrevCell = _cameraCell;
-            Vector2Int camCurrCell = WorldToCell(_camera.transform.position);
+            Vector2Int camCurrCell = GetCameraCell();
 #if DEBUG_ADDED_TILES
             //camCurrCell.x = camPrevCell.x;
             //camCurrCell.y = camPrevCell.y;

@@ -21,21 +21,16 @@ public class BoardTilemap : GridTilemap<BoardTile>
     public Transform EnemyPawnsContainer { get => _enemyPawnsContainer; }
     public Transform EnemyTargetsContainer { get => _enemyTargetsContainer; }
 
-
-    protected override void OnAwake()
-    {
-    }
-
-    protected override void OnStart()
-    {
-    }
-
     protected override void ResetCamera()
     {
         Bounds2 contentBounds = GetContentBounds();
-        Vector3 cameraPosition = new Vector3(contentBounds.Center.x, 0f, _camera.transform.position.z);
-        _camera.transform.position = cameraPosition;
-        _cameraCell = WorldToCell(cameraPosition);
+        _camera.transform.position = new Vector3(contentBounds.Center.x, 0f, _camera.transform.position.z);
+        _cameraCell = GetCameraCell();
+    }
+
+    protected override Vector2Int GetCameraCell()
+    {
+        return WorldToCell(_camera.transform.position);
     }
 
     public override void SetTilesContent()

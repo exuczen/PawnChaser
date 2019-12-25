@@ -206,56 +206,66 @@ public class BoardPathfinder : MonoBehaviour
         return nodes;
     }
 
+    private void SetCellNoneScndaryEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
+    {
+    }
+
+    private void SetCellNonePrimaryEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
+    {
+        bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
+        for (int i = 0; i < 4; i++)
+        {
+            Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+            ngbrDeltaXY.x = -ngbrDeltaXY.x;
+            ngbrDeltaXY.y = -ngbrDeltaXY.y;
+            int dx = ngbrDeltaXY.x;
+            int dy = ngbrDeltaXY.y;
+            int absdx = Mathf.Abs(ngbrDeltaXY.x);
+            int absdy = Mathf.Abs(ngbrDeltaXY.y);
+            int lockedCount = 0;
+            if (nodes[GetCellNodeIndex(x - absdy, y - absdx, columns)].locked &&
+                nodes[GetCellNodeIndex(x + absdy, y + absdx, columns)].locked)
+            {
+                lockedCount = 2;
+                if (absdx > absdy)
+                {
+                    for (int j = -1; j < 2; j++)
+                    {
+                        lockedCount += nodes[GetCellNodeIndex(x - dx, y + j, columns)].locked ? 1 : 0;
+                    }
+                }
+                else
+                {
+                    for (int j = -1; j < 2; j++)
+                    {
+                        lockedCount += nodes[GetCellNodeIndex(x + j, y - dy, columns)].locked ? 1 : 0;
+                    }
+                }
+            }
+            ngbrsEnterRisk[i] = lockedCount >= 4;
+        }
+        ngbrsEnterRisk[4] = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
+        ngbrsEnterRisk[5] = ngbrsEnterRisk[1] || ngbrsEnterRisk[2];
+        ngbrsEnterRisk[6] = ngbrsEnterRisk[0] || ngbrsEnterRisk[3];
+        ngbrsEnterRisk[7] = ngbrsEnterRisk[1] || ngbrsEnterRisk[3];
+    }
+
     private void SetCellNodesEnterRisks(CellNode[] nodes, Bounds2Int bounds)
     {
         Vector2Int size = bounds.Size;
-        int columns = size.x;
+        int columns = bounds.Size.x;
         for (int y = 1; y < size.y - 1; y++)
         {
             for (int x = 1; x < size.x - 1; x++)
             {
                 CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
-                if (cellNode.locked)
+                if (!cellNode.locked)
                 {
-                    continue;
+                    SetCellNonePrimaryEnterRisks(x, y, cellNode, nodes, columns);
+                    SetCellNoneScndaryEnterRisks(x, y, cellNode, nodes, columns);
                 }
-                bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
-                for (int i = 0; i < 4; i++)
-                {
-                    Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
-                    ngbrDeltaXY.x = -ngbrDeltaXY.x;
-                    ngbrDeltaXY.y = -ngbrDeltaXY.y;
-                    int dx = ngbrDeltaXY.x;
-                    int dy = ngbrDeltaXY.y;
-                    int absdx = Mathf.Abs(ngbrDeltaXY.x);
-                    int absdy = Mathf.Abs(ngbrDeltaXY.y);
-                    int lockedCount = 0;
-                    if (nodes[GetCellNodeIndex(x - absdy, y - absdx, columns)].locked &&
-                        nodes[GetCellNodeIndex(x + absdy, y + absdx, columns)].locked)
-                    {
-                        lockedCount = 2;
-                        if (absdx > absdy)
-                        {
-                            for (int j = -1; j < 2; j++)
-                            {
-                                lockedCount += nodes[GetCellNodeIndex(x - dx, y + j, columns)].locked ? 1 : 0;
-                            }
-                        }
-                        else
-                        {
-                            for (int j = -1; j < 2; j++)
-                            {
-                                lockedCount += nodes[GetCellNodeIndex(x + j, y - dy, columns)].locked ? 1 : 0;
-                            }
-                        }
-                    }
-                    ngbrsEnterRisk[i] = lockedCount >= 4;
-                }
-                ngbrsEnterRisk[4] = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
-                ngbrsEnterRisk[5] = ngbrsEnterRisk[1] || ngbrsEnterRisk[2];
-                ngbrsEnterRisk[6] = ngbrsEnterRisk[0] || ngbrsEnterRisk[3];
-                ngbrsEnterRisk[7] = ngbrsEnterRisk[1] || ngbrsEnterRisk[3];
 #if DEBUG_SHOW_CELL_ENTER_RISK
+                bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
                 Vector2Int cell = new Vector2Int(x + bounds.Min.x, y + bounds.Min.y);
                 int[] risks = new int[ngbrsEnterRisk.Length];
                 for (int i = 0; i < ngbrsEnterRisk.Length; i++)
