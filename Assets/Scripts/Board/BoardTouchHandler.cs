@@ -26,7 +26,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
 
     protected override void Awake()
     {
-        _tilemap = _board.Tilemap;
+        _tilemap = _board?.Tilemap;
     }
 
     protected override void Start()

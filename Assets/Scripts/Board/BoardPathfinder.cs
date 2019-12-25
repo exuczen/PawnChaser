@@ -53,7 +53,7 @@ public class BoardPathfinder : MonoBehaviour
     private void Awake()
     {
         Board board = GetComponent<Board>();
-        _tilemap = board.Tilemap;
+        _tilemap = board?.Tilemap;
     }
 
     public void ClearSprites()
