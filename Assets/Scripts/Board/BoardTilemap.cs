@@ -33,6 +33,14 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return WorldToCell(_camera.transform.position);
     }
 
+    protected override void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
+    {
+        //Debug.Log(GetType() + ".GetHalfViewSizeXY: " + Screen.width + " " + Screen.height);
+        halfYCount = (int)(_camera.orthographicSize / _grid.cellSize.y);
+        halfXCount = (halfYCount * Screen.width / Screen.height) + 2;
+        halfYCount += 1;
+    }
+
     public override void SetTilesContent()
     {
         foreach (Transform container in transform)

@@ -31,6 +31,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
     public abstract void SetTilesContent();
     protected abstract void ResetCamera();
     protected abstract Vector2Int GetCameraCell();
+    protected abstract void GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
     protected virtual void OnLateUpdate() { }
     protected virtual void OnAwake() { }
     protected virtual void OnStart() { }
@@ -44,6 +45,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     private void Start()
     {
+        _cameraCell = GetCameraCell();
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
             OnStart();
@@ -51,6 +53,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 #if UNITY_EDITOR && RELOAD_ON_START_IN_EDIT_MODE
         else
         {
+            OnStart();
             ResetTilemap();
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         }
@@ -112,14 +115,6 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
         return _tiles[tileIndex];
     }
 
-    protected void GetHalfViewSizeXY(out int halfXCount, out int halfYCount)
-    {
-        //Debug.Log(GetType() + ".GetHalfViewSizeXY: " + Screen.width + " " + Screen.height);
-        halfYCount = (int)(_camera.orthographicSize / _grid.cellSize.y);
-        halfXCount = (halfYCount * Screen.width / Screen.height) + 2;
-        halfYCount += 1;
-    }
-
     private void FillMapInView()
     {
         _tilemap.ClearAllTiles();
@@ -142,7 +137,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     protected void UpdateTilesInView(Action<int, int> onUpdate, bool refreshTiles)
     {
-        Vector2Int camCurrCell = WorldToCell(_camera.transform.position);
+        Vector2Int camCurrCell = GetCameraCell();
         GetHalfViewSizeXY(out int halfXCount, out int halfYCount);
         UpdateTiles(-halfYCount + camCurrCell.y, halfYCount + camCurrCell.y,
                     -halfXCount + camCurrCell.x, halfXCount + camCurrCell.x, (x, y) => {
