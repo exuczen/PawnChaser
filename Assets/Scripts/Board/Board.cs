@@ -1,4 +1,6 @@
-﻿using MustHave.UI;
+﻿//#define DEBUG_LEVEL
+
+using MustHave.UI;
 using MustHave.Utilities;
 using System;
 using System.Collections;
@@ -33,7 +35,7 @@ public class Board : MonoBehaviour
     private BoardScreen _boardScreen = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
-    public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
+    public int LevelIndex { get => _levelIndex; }
     public int PlayerMovesInTurn { get => _playerMovesInTurn; }
     public BoardScreen BoardScreen { get => _boardScreen; set => _boardScreen = value; }
 
@@ -45,6 +47,9 @@ public class Board : MonoBehaviour
 
     private void Start()
     {
+#if !DEBUG_LEVEL
+        _levelIndex = PlayerPrefs.GetInt(PlayerData.PLAYER_PREFS_LEVEL_INDEX, 0);
+#endif
         LoadLevelFromJson(_levelIndex);
     }
 

@@ -1,6 +1,4 @@
 ﻿using MustHave.UI;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,13 +21,31 @@ public class BoardScreen : ScreenScript
         _skipMoveButton.onClick.AddListener(_board.SkipPlayerMove);
     }
 
+    public override bool OnBack()
+    {
+        Canvas.AlertPopup.SetText("Are you sure you want to quit?")
+            .SetButtons(
+                ActionWithText.Create(AlertPopupScript.BUTTON_NO, null),
+                ActionWithText.Create(AlertPopupScript.BUTTON_YES, ShowLevelsScreen)
+            ).Show();
+        return false;
+    }
+
     private void OnOptionsButtonClick()
     {
         Canvas.AlertPopup.SetText("")
-            .SetButtons(ActionWithText.Create("Reset", () => {
-                _board.ResetLevel();
-            }), ActionWithText.Create("Back", null))
-            .Show();
+            .SetButtons(
+                ActionWithText.Create("Reset", () => {
+                    _board.ResetLevel();
+                }),
+                ActionWithText.Create("Menu", ShowLevelsScreen),
+                ActionWithText.Create("Back", null)
+            ).Show();
+    }
+
+    private void ShowLevelsScreen()
+    {
+        Canvas.ShowScreenFromOtherScene<LevelsScreen, LevelsCanvas>(SceneName.LevelsScene, false, false);
     }
 
     public void ShowFailPopup()
@@ -46,10 +62,8 @@ public class BoardScreen : ScreenScript
                 ActionWithText.Create("Next level", () => {
                     _board.LoadNextLevel();
                 }),
-                ActionWithText.Create("Menu", () => {
-                    _board.ResetLevel();
-                }))
-            .Show();
+                ActionWithText.Create("Menu", ShowLevelsScreen)
+            ).Show();
     }
 
     public void SetPlayerMovesLeft(int count)

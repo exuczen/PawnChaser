@@ -9,13 +9,15 @@ public class LevelsTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHa
     [SerializeField] private LevelsMap _levelsMap = default;
 
     private LevelsTilemap _tilemap = default;
+    private LevelsScreen _levelsScreen = default;
     private Camera _camera = default;
-    private SpriteRenderer _selectedLevelPointerSprite = default;
+    private LevelPointer _selectedLevelPointer = default;
 
     protected override void Awake()
     {
         _tilemap = _levelsMap.Tilemap;
         _camera = _tilemap.Camera;
+        _levelsScreen = GetComponentInParent<LevelsScreen>();
     }
 
     private void TranslateCamera(PointerEventData eventData)
@@ -60,25 +62,31 @@ public class LevelsTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHa
         Ray touchRay = _camera.ScreenPointToRay(eventData.position);
         //Debug.Log(GetType() + ".OnPointerDown");
         //RaycastHit2D hit = Physics2D.GetRayIntersection(touchRay, 100f, Layer.LevelPointersMask);
-        if (Physics.Raycast(touchRay, out RaycastHit hit, 1000f, Layer.LevelPointersMask))
+        if (Physics.Raycast(touchRay, out RaycastHit hit, 100f, Layer.LevelPointersMask))
         {
-            if (_selectedLevelPointerSprite)
+            if (_selectedLevelPointer)
             {
-                _selectedLevelPointerSprite.color = Color.white;
+                _selectedLevelPointer.Sprite.color = Color.white;
             }
-            _selectedLevelPointerSprite = hit.transform.GetComponent<SpriteRenderer>();
-            _selectedLevelPointerSprite.color = Color.black;
-            //Debug.Log(GetType() + ".OnPointerDown: " + _selectedLevelPointerSprite);
+            _selectedLevelPointer = hit.transform.parent.GetComponent<LevelPointer>();
+            _selectedLevelPointer.Sprite.color = Color.black;
         }
         //Debug.DrawRay(touchRay.origin, 100f * touchRay.direction, Color.white, 5f);
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (_selectedLevelPointerSprite)
+        //Debug.Log(GetType() + ".OnPointerUp");
+        if (_selectedLevelPointer)
         {
-            _selectedLevelPointerSprite.color = Color.white;
+            Ray touchRay = _camera.ScreenPointToRay(eventData.position);
+            if (_selectedLevelPointer.Collider.Raycast(touchRay, out _, 100f))
+            {
+                //Debug.Log(GetType() + ".OnPointerUp: level: "+ _selectedLevelPointer.Level);
+                _levelsScreen.ShowLevelPopup(_selectedLevelPointer.Level);
+                _selectedLevelPointer.Sprite.color = Color.white;
+                _selectedLevelPointer = null;
+            }
         }
-        _selectedLevelPointerSprite = null;
     }
 }

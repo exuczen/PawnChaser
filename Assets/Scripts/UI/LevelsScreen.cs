@@ -1,11 +1,14 @@
 ﻿using MustHave.UI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using UnityEngine;
 
 public class LevelsScreen : ScreenScript
 {
+    public void ShowLevelPopup(int level)
+    {
+        Canvas.AlertPopup.ShowWithConfirmButton("Ready, Steady, Go!", () => {
+            PlayerPrefs.SetInt(PlayerData.PLAYER_PREFS_LEVEL_INDEX, level - 1);
+            Canvas.ShowScreenFromOtherScene<BoardScreen, BoardCanvas>(SceneName.MainScene, false, false);
+        }, false);
+    }
 }
 

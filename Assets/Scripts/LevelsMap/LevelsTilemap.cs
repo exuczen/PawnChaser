@@ -6,6 +6,8 @@ using UnityEngine;
 
 public class LevelsTilemap : GridTilemap<GridTile>
 {
+    [SerializeField] Transform _levelsContainer = default;
+
     private float _planeHalfHeightInView = default;
 
     protected override void OnStart()
@@ -21,6 +23,11 @@ public class LevelsTilemap : GridTilemap<GridTile>
         if (EditorApplicationUtils.ApplicationIsPlaying)
         {
             ResetTilemap();
+        }
+        Quaternion lookAtCameraRotation = Quaternion.LookRotation(_camera.transform.forward, _camera.transform.up);
+        foreach (Transform levelPointer in _levelsContainer)
+        {
+            levelPointer.rotation = lookAtCameraRotation;
         }
     }
 
