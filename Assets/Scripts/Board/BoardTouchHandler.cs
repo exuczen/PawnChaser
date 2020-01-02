@@ -77,7 +77,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         Vector3 translation = -camera.ScreenToWorldTranslation(screenDelta);
         //translation.x = 0f;
         //translation.y = 0f;
-        camera.transform.Translate(1f * translation, Space.Self);
+        camera.transform.Translate(1f * translation, Space.World);
     }
 
     private IEnumerator MovePlayerPawnRoutine(PlayerPawn pawn, Vector2Int destCell)

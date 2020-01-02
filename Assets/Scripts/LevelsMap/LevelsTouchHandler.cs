@@ -12,6 +12,7 @@ public class LevelsTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHa
     private LevelsScreen _levelsScreen = default;
     private Camera _camera = default;
     private LevelPointer _selectedLevelPointer = default;
+    private int _selectedLevelPointerId = int.MinValue;
 
     protected override void Awake()
     {
@@ -70,6 +71,7 @@ public class LevelsTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHa
             }
             _selectedLevelPointer = hit.transform.parent.GetComponent<LevelPointer>();
             _selectedLevelPointer.Sprite.color = Color.black;
+            _selectedLevelPointerId = eventData.pointerId;
         }
         //Debug.DrawRay(touchRay.origin, 100f * touchRay.direction, Color.white, 5f);
     }
@@ -77,16 +79,17 @@ public class LevelsTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHa
     public void OnPointerUp(PointerEventData eventData)
     {
         //Debug.Log(GetType() + ".OnPointerUp");
-        if (_selectedLevelPointer)
+        if (_selectedLevelPointer && _selectedLevelPointerId == eventData.pointerId)
         {
-            Ray touchRay = _camera.ScreenPointToRay(eventData.position);
-            if (_selectedLevelPointer.Collider.Raycast(touchRay, out _, 100f))
-            {
-                //Debug.Log(GetType() + ".OnPointerUp: level: "+ _selectedLevelPointer.Level);
-                _levelsScreen.ShowLevelPopup(_selectedLevelPointer.Level);
-                _selectedLevelPointer.Sprite.color = Color.white;
-                _selectedLevelPointer = null;
-            }
+            //Ray touchRay = _camera.ScreenPointToRay(eventData.position);
+            //if (_selectedLevelPointer.Collider.Raycast(touchRay, out _, 100f))
+            //{
+            //}
+            //Debug.Log(GetType() + ".OnPointerUp: level: "+ _selectedLevelPointer.Level);
+            _levelsScreen.ShowLevelPopup(_selectedLevelPointer.Level);
+            _selectedLevelPointer.Sprite.color = Color.white;
+            _selectedLevelPointer = null;
+            _selectedLevelPointerId = int.MinValue;
         }
     }
 }
