@@ -1,6 +1,7 @@
-﻿//#define DEBUG_SHOW_CELL_ENTER_RISK
+﻿#define DEBUG_SHOW_CELL_ENTER_RISK
 //#define DEBUG_SHOW_DISTANCES
 //#define DEBUG_DISTANCE_INT
+#define LOCKED_CELLS_HEIGHTS
 
 using MustHave;
 using MustHave.Utilities;
@@ -42,12 +43,8 @@ public class BoardPathfinder : MonoBehaviour
         public bool locked = false;
         public bool @checked = false;
         public float distance = float.MaxValue;
+        public int[] lockedNgbrsCount = new int[3];
         public bool[] ngbrsEnterRisk = new bool[8];
-
-        public bool GetNgbrEnterRisk(int ngbrIndex)
-        {
-            return ngbrIndex >= 0 && ngbrIndex < 8 ? ngbrsEnterRisk[ngbrIndex] : false;
-        }
     }
 
     private void Awake()
@@ -200,17 +197,15 @@ public class BoardPathfinder : MonoBehaviour
         begNode.locked = false;
         endNode.locked = false;
 
+        SetCellNodesNgbrsCount(nodes, bounds);
+
         if (_cellNodesEnterRisk)
-            SetCellNodesEnterRisks(nodes, bounds);
+            SetCellNodesEnterRisks(nodes, bounds, begXY);
 
         return nodes;
     }
 
-    private void SetCellNoneScndaryEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
-    {
-    }
-
-    private void SetCellNonePrimaryEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
+    private void SetCellNoneEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
     {
         bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
         for (int i = 0; i < 4; i++)
@@ -242,15 +237,30 @@ public class BoardPathfinder : MonoBehaviour
                     }
                 }
             }
-            ngbrsEnterRisk[i] = lockedCount >= 4;
+            ngbrsEnterRisk[i] = lockedCount >= 3;
         }
         ngbrsEnterRisk[4] = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
         ngbrsEnterRisk[5] = ngbrsEnterRisk[1] || ngbrsEnterRisk[2];
         ngbrsEnterRisk[6] = ngbrsEnterRisk[0] || ngbrsEnterRisk[3];
         ngbrsEnterRisk[7] = ngbrsEnterRisk[1] || ngbrsEnterRisk[3];
+
+        for (int i = 4; i < 8; i++)
+        {
+            Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+            ngbrDeltaXY.x = -ngbrDeltaXY.x;
+            ngbrDeltaXY.y = -ngbrDeltaXY.y;
+            int dx = ngbrDeltaXY.x;
+            int dy = ngbrDeltaXY.y;
+            if (!nodes[GetCellNodeIndex(x + dx, y + dy, columns)].locked &&
+                nodes[GetCellNodeIndex(x, y + dy, columns)].locked &&
+                nodes[GetCellNodeIndex(x + dx, y, columns)].locked)
+            {
+                ngbrsEnterRisk[i] |= cellNode.lockedNgbrsCount[0] >= 3;
+            }
+        }
     }
 
-    private void SetCellNodesEnterRisks(CellNode[] nodes, Bounds2Int bounds)
+    private void SetCellNodesEnterRisks(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY)
     {
         Vector2Int size = bounds.Size;
         int columns = bounds.Size.x;
@@ -261,10 +271,27 @@ public class BoardPathfinder : MonoBehaviour
                 CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
                 if (!cellNode.locked)
                 {
-                    SetCellNonePrimaryEnterRisks(x, y, cellNode, nodes, columns);
-                    SetCellNoneScndaryEnterRisks(x, y, cellNode, nodes, columns);
+                    SetCellNoneEnterRisks(x, y, cellNode, nodes, columns);
                 }
+            }
+        }
+        for (int i = 0; i < _cellNgbrsDeltaXY.Length; i++)
+        {
+            CellNode ngbrNode = nodes[GetCellNodeIndex(begXY + _cellNgbrsDeltaXY[i], columns)];
+            if (!ngbrNode.locked)
+            {
+                for (int j = 0; j < 8; j++)
+                {
+                    ngbrNode.ngbrsEnterRisk[j] = false;
+                }
+            }
+        }
 #if DEBUG_SHOW_CELL_ENTER_RISK
+        for (int y = 1; y < size.y - 1; y++)
+        {
+            for (int x = 1; x < size.x - 1; x++)
+            {
+                CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
                 bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
                 Vector2Int cell = new Vector2Int(x + bounds.Min.x, y + bounds.Min.y);
                 int[] risks = new int[ngbrsEnterRisk.Length];
@@ -276,7 +303,55 @@ public class BoardPathfinder : MonoBehaviour
                 risksText += risks[1] + "0" + risks[0] + "\n";
                 risksText += risks[7] + "" + risks[3] + "" + risks[6];
                 SetTileMeshText(cell, risksText);
+            }
+        }
 #endif
+    }
+
+    private void SetCellNodesNgbrsCount(CellNode[] nodes, Bounds2Int bounds)
+    {
+        Vector2Int size = bounds.Size;
+        int columns = bounds.Size.x;
+        for (int y = 1; y < size.y - 1; y++)
+        {
+            for (int x = 1; x < size.x - 1; x++)
+            {
+                CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
+                if (!cellNode.locked)
+                {
+                    for (int k = 0; k < 3; k++)
+                    {
+                        cellNode.lockedNgbrsCount[k] = 0;
+                        int n_even = 2 + 2 * k;
+                        int n_odd = n_even + 1; //3 + 2 * k;
+                        int[] deltaJ = new int[n_odd];
+                        for (int j = 1; j < n_odd - 1; j++)
+                        {
+                            deltaJ[j] = n_even;
+                        }
+                        deltaJ[0] = deltaJ[n_odd - 1] = 1;
+                        //string s = "\n";
+                        int offset = k + 1;
+                        for (int i = 0; i < n_odd; i++)
+                        {
+                            int dy = i - offset;
+                            for (int j = 0; j < n_odd; j += deltaJ[i])
+                            {
+                                int dx = j - offset;
+                                Vector2Int ngbrXY = new Vector2Int(x + dx, y + dy);
+                                //s += "(" + dx + "," + dy + ")";
+                                if (CellNodeInBounds(ngbrXY, bounds.Size))
+                                {
+                                    int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
+                                    CellNode ngbrNode = nodes[ngbrNodeIndex];
+                                    cellNode.lockedNgbrsCount[k] += ngbrNode.locked ? 1 : 0;
+                                }
+                            }
+                            //s += "\n";
+                        }
+                        //Debug.Log(GetType() + "." + s);
+                    }
+                }
             }
         }
     }
@@ -299,7 +374,7 @@ public class BoardPathfinder : MonoBehaviour
                 {
                     int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
                     CellNode ngbrNode = nodes[ngbrNodeIndex];
-                    bool ngbrEnterRisk = _cellNodesEnterRisk && ngbrNode.GetNgbrEnterRisk(i);
+                    bool ngbrEnterRisk = _cellNodesEnterRisk && ngbrNode.ngbrsEnterRisk[i];
                     if (!ngbrNode.locked && !ngbrEnterRisk && !ngbrNode.@checked)
                     {
                         if (!nextNodesXY.Contains(ngbrXY))
@@ -310,6 +385,12 @@ public class BoardPathfinder : MonoBehaviour
                         float delta = 1f;
 #else
                         float delta = ngbrDeltaXY.x == 0 || ngbrDeltaXY.y == 0 ? 1f : SQRT2;
+#if LOCKED_CELLS_HEIGHTS
+                        for (int j = 0; j < 2; j++)
+                        {
+                            delta += 2f * ngbrNode.lockedNgbrsCount[j] / (8 * (i + 1));
+                        }
+#endif
 #endif
                         ngbrNode.distance = Mathf.Min(ngbrNode.distance, node.distance + delta);
 #if DEBUG_SHOW_DISTANCES
@@ -413,9 +494,14 @@ public class BoardPathfinder : MonoBehaviour
         return x + y * columns;
     }
 
+    private int GetCellNodeIndex(Vector2Int cell, int columns)
+    {
+        return cell.x + cell.y * columns;
+    }
+
     private int GetCellNodeIndex(Vector2Int cell, Vector2Int size)
     {
-        return cell.x + cell.y * size.x;
+        return GetCellNodeIndex(cell, size.x);
     }
 
     private bool CellNodeInBounds(Vector2Int cell, Vector2Int size)
