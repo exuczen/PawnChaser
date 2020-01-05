@@ -81,20 +81,14 @@ public class EnemyHandler : MonoBehaviour
         foreach (var enemyPawn in _enemySingles)
         {
             PathResult pathResult = null;
-            for (int i = 0; i < 2; i++)
-            {
-                _pathfinder.CellNodesEnterRisk = i == 0;
 #if DEBUG_PATHFINDING
-                yield return _pathfinder.FindPathRoutine(enemyPawn, enemyPawn.Target, aPathResult => {
-                    pathResult = aPathResult;
-                }, pawnTransitions, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            yield return _pathfinder.FindPathRoutine(enemyPawn, enemyPawn.Target, aPathResult => {
+                pathResult = aPathResult;
+            }, pawnTransitions, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
-                pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, pawnTransitions,
-                    _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, pawnTransitions,
+                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #endif
-                if (pathResult.PathFound)
-                    break;
-            }
             pathResults.Add(pathResult);
             var path = pathResult.Path;
             if (pathResult.PathFound && path.Count > 0)
@@ -135,19 +129,13 @@ public class EnemyHandler : MonoBehaviour
             EnemyPawn enemyPawnA = pair.Pawn1;
             EnemyPawn enemyPawnB = pair.Pawn2;
             PathResult pathResult = null;
-            for (int i = 0; i < 2; i++)
-            {
-                _pathfinder.CellNodesEnterRisk = i == 0;
 #if DEBUG_PATHFINDING
-                yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, aPathResult => {
-                    pathResult = aPathResult;
-                }, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            yield return _pathfinder.FindPathRoutine(enemyPawnA, enemyPawnB, aPathResult => {
+                pathResult = aPathResult;
+            }, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
-                pathResult = _pathfinder.FindPath(enemyPawnA, enemyPawnB, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+            pathResult = _pathfinder.FindPath(enemyPawnA, enemyPawnB, null, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #endif
-                if (pathResult.PathFound)
-                    break;
-            }
             if (pathResult.PathFound)
             {
                 var path = pathResult.Path;

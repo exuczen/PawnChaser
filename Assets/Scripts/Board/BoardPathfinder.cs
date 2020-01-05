@@ -1,7 +1,7 @@
-﻿#define DEBUG_SHOW_CELL_ENTER_RISK
+﻿//#define DEBUG_SHOW_CELL_ENTER_RISK
 //#define DEBUG_SHOW_DISTANCES
 //#define DEBUG_DISTANCE_INT
-#define LOCKED_CELLS_HEIGHTS
+//#define LOCKED_CELLS_HEIGHTS
 
 using MustHave;
 using MustHave.Utilities;
@@ -81,7 +81,8 @@ public class BoardPathfinder : MonoBehaviour
         }
     }
 
-    private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
+    private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds, List<PawnTransition> pawnTransitions,
+        int maxLockedNgbrsCount, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -100,7 +101,7 @@ public class BoardPathfinder : MonoBehaviour
             bool targetReached = false;
             while (nodesXY.Count > 0)
             {
-                nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, out targetReached);
+                nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, maxLockedNgbrsCount, out targetReached);
             }
             ClearTilesMeshTexts(bounds);
             return new PathResult(targetReached, CreatePath(nodes, bounds, begXY, endXY));
@@ -122,7 +123,21 @@ public class BoardPathfinder : MonoBehaviour
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Vector2Int endXY = _tilemap.WorldToCell(endTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
-        return FindPath(begXY, endXY, bounds, pawnTransitions, contentContainers);
+        PathResult pathResult = null;
+        for (int i = 3; i < 8; i++)
+        {
+            for (int j = 0; j < (i < 5 ? 1 : 2); j++)
+            {
+                _cellNodesEnterRisk = j == 0;
+                pathResult = FindPath(begXY, endXY, bounds, pawnTransitions, i, contentContainers);
+                if (pathResult.PathFound)
+                {
+                    i = 8;
+                    break;
+                }
+            }
+        }
+        return pathResult;
     }
 
     public PathResult FindPathToBoundsMin(TileContent begTileContent, params Transform[] contentContainers)
@@ -131,7 +146,7 @@ public class BoardPathfinder : MonoBehaviour
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
-        return FindPath(begXY, endXY, bounds, null, contentContainers);
+        return FindPath(begXY, endXY, bounds, null, 8, contentContainers);
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
@@ -197,7 +212,7 @@ public class BoardPathfinder : MonoBehaviour
         begNode.locked = false;
         endNode.locked = false;
 
-        SetCellNodesNgbrsCount(nodes, bounds);
+        SetCellNodesNgbrsCount(nodes, bounds, begXY);
 
         if (_cellNodesEnterRisk)
             SetCellNodesEnterRisks(nodes, bounds, begXY);
@@ -207,55 +222,72 @@ public class BoardPathfinder : MonoBehaviour
 
     private void SetCellNoneEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
     {
-        bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
-        for (int i = 0; i < 4; i++)
+        if (cellNode.lockedNgbrsCount[0] >= 3)
         {
-            Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
-            ngbrDeltaXY.x = -ngbrDeltaXY.x;
-            ngbrDeltaXY.y = -ngbrDeltaXY.y;
-            int dx = ngbrDeltaXY.x;
-            int dy = ngbrDeltaXY.y;
-            int absdx = Mathf.Abs(ngbrDeltaXY.x);
-            int absdy = Mathf.Abs(ngbrDeltaXY.y);
-            int lockedCount = 0;
-            if (nodes[GetCellNodeIndex(x - absdy, y - absdx, columns)].locked &&
-                nodes[GetCellNodeIndex(x + absdy, y + absdx, columns)].locked)
+            //Func<int, int, bool> nodeIsLocked = (nodeX, nodeY) => {
+            //    return nodes[GetCellNodeIndex(nodeX, nodeY, columns)].locked;
+            //};
+            bool NodeIsLocked(int nodeX, int nodeY)
             {
-                lockedCount = 2;
-                if (absdx > absdy)
-                {
-                    for (int j = -1; j < 2; j++)
-                    {
-                        lockedCount += nodes[GetCellNodeIndex(x - dx, y + j, columns)].locked ? 1 : 0;
-                    }
-                }
-                else
-                {
-                    for (int j = -1; j < 2; j++)
-                    {
-                        lockedCount += nodes[GetCellNodeIndex(x + j, y - dy, columns)].locked ? 1 : 0;
-                    }
-                }
+                return nodes[GetCellNodeIndex(nodeX, nodeY, columns)].locked;
             }
-            ngbrsEnterRisk[i] = lockedCount >= 3;
-        }
-        ngbrsEnterRisk[4] = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
-        ngbrsEnterRisk[5] = ngbrsEnterRisk[1] || ngbrsEnterRisk[2];
-        ngbrsEnterRisk[6] = ngbrsEnterRisk[0] || ngbrsEnterRisk[3];
-        ngbrsEnterRisk[7] = ngbrsEnterRisk[1] || ngbrsEnterRisk[3];
-
-        for (int i = 4; i < 8; i++)
-        {
-            Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
-            ngbrDeltaXY.x = -ngbrDeltaXY.x;
-            ngbrDeltaXY.y = -ngbrDeltaXY.y;
-            int dx = ngbrDeltaXY.x;
-            int dy = ngbrDeltaXY.y;
-            if (!nodes[GetCellNodeIndex(x + dx, y + dy, columns)].locked &&
-                nodes[GetCellNodeIndex(x, y + dy, columns)].locked &&
-                nodes[GetCellNodeIndex(x + dx, y, columns)].locked)
+            bool[] ngbrsEnterRisk = cellNode.ngbrsEnterRisk;
+            for (int i = 0; i < 4; i += 2)
             {
-                ngbrsEnterRisk[i] |= cellNode.lockedNgbrsCount[0] >= 3;
+                Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+                ngbrDeltaXY.x = -ngbrDeltaXY.x;
+                ngbrDeltaXY.y = -ngbrDeltaXY.y;
+                int dx = ngbrDeltaXY.x;
+                int dy = ngbrDeltaXY.y;
+                int absdx = Mathf.Abs(ngbrDeltaXY.x);
+                int absdy = Mathf.Abs(ngbrDeltaXY.y);
+                ngbrsEnterRisk[i] =
+                    NodeIsLocked(x - absdy, y - absdx) &&
+                    NodeIsLocked(x + absdy, y + absdx);
+            }
+            ngbrsEnterRisk[1] = ngbrsEnterRisk[0];
+            ngbrsEnterRisk[3] = ngbrsEnterRisk[2];
+            bool risk02 = ngbrsEnterRisk[0] || ngbrsEnterRisk[2];
+            for (int i = 4; i < 8; i++)
+            {
+                ngbrsEnterRisk[i] = risk02;
+            }
+            if (!risk02)
+            {
+                for (int i = 4; i < 8; i++)
+                {
+                    Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+                    ngbrDeltaXY.x = -ngbrDeltaXY.x;
+                    ngbrDeltaXY.y = -ngbrDeltaXY.y;
+                    int dx = ngbrDeltaXY.x;
+                    int dy = ngbrDeltaXY.y;
+                    int signDxDy = Math.Sign(dx * dy);
+                    ngbrsEnterRisk[i] |= !NodeIsLocked(x + dx, y + dy) &&
+                        NodeIsLocked(x, y + dy) &&
+                        NodeIsLocked(x + dx, y);
+                    ngbrsEnterRisk[i] |=
+                        NodeIsLocked(x, y - dy) &&
+                        NodeIsLocked(x - dx, y) &&
+                        NodeIsLocked(x - 1, y + signDxDy) &&
+                        NodeIsLocked(x + 1, y - signDxDy);
+                }
+                ngbrsEnterRisk[1] |= ngbrsEnterRisk[7];
+                ngbrsEnterRisk[3] |= ngbrsEnterRisk[7];
+                ngbrsEnterRisk[0] |= ngbrsEnterRisk[4];
+                ngbrsEnterRisk[2] |= ngbrsEnterRisk[4];
+                ngbrsEnterRisk[1] |= ngbrsEnterRisk[5];
+                ngbrsEnterRisk[2] |= ngbrsEnterRisk[5];
+                ngbrsEnterRisk[0] |= ngbrsEnterRisk[6];
+                ngbrsEnterRisk[3] |= ngbrsEnterRisk[6];
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                Vector2Int ngbrDeltaXY = _cellNgbrsDeltaXY[i];
+                ngbrDeltaXY.x = -ngbrDeltaXY.x;
+                ngbrDeltaXY.y = -ngbrDeltaXY.y;
+                int dx = ngbrDeltaXY.x;
+                int dy = ngbrDeltaXY.y;
+                ngbrsEnterRisk[i] |= NodeIsLocked(x + dx, y + dy);
             }
         }
     }
@@ -308,7 +340,7 @@ public class BoardPathfinder : MonoBehaviour
 #endif
     }
 
-    private void SetCellNodesNgbrsCount(CellNode[] nodes, Bounds2Int bounds)
+    private void SetCellNodesNgbrsCount(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY)
     {
         Vector2Int size = bounds.Size;
         int columns = bounds.Size.x;
@@ -356,7 +388,8 @@ public class BoardPathfinder : MonoBehaviour
         }
     }
 
-    private HashSet<Vector2Int> UpdateCellNodes(CellNode[] nodes, Bounds2Int bounds, HashSet<Vector2Int> nodesXY, Vector2Int targetXY, out bool targetReached)
+    private HashSet<Vector2Int> UpdateCellNodes(CellNode[] nodes, Bounds2Int bounds, HashSet<Vector2Int> nodesXY, Vector2Int targetXY,
+        int maxLockedNgbrsCount, out bool targetReached)
     {
         HashSet<Vector2Int> nextNodesXY = new HashSet<Vector2Int>();
         targetReached = false;
@@ -374,8 +407,8 @@ public class BoardPathfinder : MonoBehaviour
                 {
                     int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
                     CellNode ngbrNode = nodes[ngbrNodeIndex];
-                    bool ngbrEnterRisk = _cellNodesEnterRisk && ngbrNode.ngbrsEnterRisk[i];
-                    if (!ngbrNode.locked && !ngbrEnterRisk && !ngbrNode.@checked)
+                    bool ngbrClosed = (_cellNodesEnterRisk && ngbrNode.ngbrsEnterRisk[i]) || ngbrNode.lockedNgbrsCount[0] > maxLockedNgbrsCount;
+                    if (!ngbrNode.locked && !ngbrClosed && !ngbrNode.@checked)
                     {
                         if (!nextNodesXY.Contains(ngbrXY))
                         {
@@ -386,9 +419,9 @@ public class BoardPathfinder : MonoBehaviour
 #else
                         float delta = ngbrDeltaXY.x == 0 || ngbrDeltaXY.y == 0 ? 1f : SQRT2;
 #if LOCKED_CELLS_HEIGHTS
-                        for (int j = 0; j < 2; j++)
+                        for (int j = 0; j < 3; j++)
                         {
-                            delta += 2f * ngbrNode.lockedNgbrsCount[j] / (8 * (i + 1));
+                            delta += 1.5f * ngbrNode.lockedNgbrsCount[j] / (8 * (i + 1));
                         }
 #endif
 #endif
@@ -415,7 +448,7 @@ public class BoardPathfinder : MonoBehaviour
         bool targetReached = false;
         while (nodesXY.Count > 0)
         {
-            nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, out targetReached);
+            nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, 8, out targetReached);
             yield return new WaitForSeconds(0.05f);
         }
         onEnd(targetReached);

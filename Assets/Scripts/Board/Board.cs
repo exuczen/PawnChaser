@@ -200,7 +200,7 @@ public class Board : MonoBehaviour
 
     public void LoadNextLevel()
     {
-        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 5);
+        LoadLevelFromJson(_levelIndex = (_levelIndex + 1) % 6);
     }
 
     public void ResetLevel()
