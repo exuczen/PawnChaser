@@ -94,6 +94,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebc8b70c2c047c5458b377435be6f5d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _pathSpritePrefab: {fileID: 2084542338082595324, guid: 6f66756f147e1ca40bba6784bc76cb39,
+    type: 3}
   _target: {fileID: 0}
 --- !u!1 &6183516789090077392
 GameObject:

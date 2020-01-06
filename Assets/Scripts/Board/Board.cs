@@ -20,6 +20,7 @@ public class Board : MonoBehaviour
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Transform _playerPawnsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
+    [SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
 
     [Header("BOARD LEVEL")]
     [SerializeField] private int _levelIndex = default;
@@ -105,6 +106,7 @@ public class Board : MonoBehaviour
         foreach (EnemyPawn pawn in _enemyPawns)
         {
             pawn.AddCellPositionToStack(_tilemap);
+            pawn.AddPathSpriteOnCurrentCell(_tilemap, _enemyPawnsPathSpritesContainer);
         }
         _playerMovesLeftStack.Add(_playerMovesLeft);
         _pawnsPositionsSaved = true;

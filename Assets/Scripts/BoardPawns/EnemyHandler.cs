@@ -12,6 +12,7 @@ public class EnemyHandler : MonoBehaviour
     [SerializeField] private Transform _playerPawnsContainer = default;
     [SerializeField] private Transform _playerTargetsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
+    [SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
     [SerializeField] private Transform _enemyTargetsContainer = default;
 
     private BoardPathfinder _pathfinder = default;
@@ -87,13 +88,13 @@ public class EnemyHandler : MonoBehaviour
             }, pawnTransitions, _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
 #else
             pathResult = _pathfinder.FindPath(enemyPawn, enemyPawn.Target, pawnTransitions,
-                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer);
+                _playerPawnsContainer, _enemyPawnsContainer, _enemyTargetsContainer, _enemyPawnsPathSpritesContainer);
 #endif
             pathResults.Add(pathResult);
             var path = pathResult.Path;
             if (pathResult.PathFound && path.Count > 0)
             {
-                _pathfinder.CreatePathSprites(path, 1, 1);
+                _pathfinder.CreatePathSprites(path, 1, 1, Color.white);
                 PawnTransition pawnTransition = new PawnTransition(enemyPawn, _tilemap, path.PickLastElement());
                 pawnTransitions.Add(pawnTransition);
                 lockedCells.Add(pawnTransition.EndCell);
@@ -144,7 +145,7 @@ public class EnemyHandler : MonoBehaviour
                     path.RemoveAt(0);
                     if (path.Count > 0)
                     {
-                        List<SpriteRenderer> pathSprites = _pathfinder.CreatePathSprites(path, 1, 1);
+                        List<SpriteRenderer> pathSprites = _pathfinder.CreatePathSprites(path, 1, 1, Color.white);
                         yield return MoveEnemyPawnsPairRoutine(pair, path);
                         movedEnemiesCount += 2;
                     }

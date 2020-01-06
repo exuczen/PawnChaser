@@ -11,6 +11,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
     [SerializeField] private Transform _playerPawnsContainer = default;
     [SerializeField] private Transform _playerTargetsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
+    [SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
     [SerializeField] private Transform _enemyTargetsContainer = default;
     [SerializeField] private PlayerPawn _playerPawnPrefab = default;
     [SerializeField] private EnemyPawn _enemyPawnPrefab = default;
@@ -121,11 +122,11 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return GetTilesContentCellBounds(initXY, initXY, contentContainers);
     }
 
-    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY, Vector2Int destXY, params Transform[] contentContainers)
+    public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY1, Vector2Int initXY2, params Transform[] contentContainers)
     {
-        Vector2Int min = Maths.Min(initXY, destXY);
-        Vector2Int max = Maths.Max(initXY, destXY);
-        Bounds2Int bounds = new Bounds2Int(initXY, Vector2Int.one);
+        Vector2Int min = Maths.Min(initXY1, initXY2);
+        Vector2Int max = Maths.Max(initXY1, initXY2);
+        Bounds2Int bounds = new Bounds2Int(initXY1, Vector2Int.one);
         foreach (Transform container in contentContainers)
         {
             bounds = GetChildrenCellBounds(bounds.Min, bounds.Max, container);
@@ -142,6 +143,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
         {
             if (EditorApplicationUtils.ApplicationIsPlaying)
             {
+                _enemyPawnsPathSpritesContainer.DestroyAllChildren();
                 foreach (Transform container in _tilemap.transform)
                 {
                     container.DestroyAllChildren();
@@ -149,6 +151,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
             }
             else
             {
+                _enemyPawnsPathSpritesContainer.DestroyAllChildrenImmediate();
                 foreach (Transform container in _tilemap.transform)
                 {
                     container.DestroyAllChildrenImmediate();
