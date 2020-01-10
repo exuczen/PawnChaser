@@ -1,6 +1,5 @@
 ﻿//#define DEBUG_SHOW_CELL_ENTER_RISK
 #define DEBUG_SHOW_DISTANCES
-//#define DEBUG_DISTANCE_INT
 //#define LOCKED_CELLS_HEIGHTS
 
 using MustHave;
@@ -42,8 +41,9 @@ public class BoardPathfinder : MonoBehaviour
     {
         public bool locked = false;
         public bool @checked = false;
+        public bool isPlayerPawn = false;
         public float distance = float.MaxValue;
-        public int[] lockedNgbrsCount = new int[3];
+        public int[] ngbrPlayerPawnsCount = new int[3];
         public bool[] ngbrsEnterRisk = new bool[8];
     }
 
@@ -71,7 +71,7 @@ public class BoardPathfinder : MonoBehaviour
             _tileTextsContainer.transform.DestroyAllChildren();
             begXY -= bounds.Min;
             endXY -= bounds.Min;
-            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, null, contentContainers);
+            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, contentContainers);
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
             yield return UpdateCellNodesRoutine(nodes, bounds, begXY, endXY, targetReached => {
@@ -82,8 +82,7 @@ public class BoardPathfinder : MonoBehaviour
     }
 
     private PathResult FindPath(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds,
-        List<PawnTransition> pawnTransitions, List<Vector2Int> lockedCells,
-        int maxLockedNgbrsCount, params Transform[] contentContainers)
+        List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         if (begXY == endXY)
         {
@@ -96,13 +95,13 @@ public class BoardPathfinder : MonoBehaviour
             endXY -= bounds.Min;
             //Debug.Log(GetType() + ".FindPathToTarget: bounds: " + bounds.Min + " " + bounds.Max + " " + bounds.Size + " ");
             //Debug.Log(GetType() + ".FindPathToTarget: " + begXY + "->" + endXY);
-            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, lockedCells, contentContainers);
+            var nodes = CreateCellNodes(begXY, endXY, bounds, pawnTransitions, contentContainers);
 
             HashSet<Vector2Int> nodesXY = new HashSet<Vector2Int>() { begXY };
             bool targetReached = false;
             while (nodesXY.Count > 0)
             {
-                nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, maxLockedNgbrsCount, out targetReached);
+                nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, ref targetReached);
             }
             ClearTilesMeshTexts(bounds);
             return new PathResult(targetReached, CreatePath(nodes, bounds, begXY, endXY));
@@ -125,38 +124,28 @@ public class BoardPathfinder : MonoBehaviour
         Vector2Int endXY = _tilemap.WorldToCell(target.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, endXY, contentContainers);
         PathResult pathResult = null;
-        _cellNodesEnterRisk = false;
+
         for (int i = 0; i < 2; i++)
         {
-            pathResult = FindPath(begXY, endXY, bounds, pawnTransitions, null, 8, contentContainers);
+            _cellNodesEnterRisk = i == 0;
+            pathResult = FindPath(begXY, endXY, bounds, pawnTransitions, contentContainers);
             if (pathResult.PathFound)
                 break;
-            else
-                pawn.DestroyPathSprites();
+            //else
+            //{
+            //    pawn.DestroyPathSprites();
+            //}
         }
-        //for (int i = 3; i < 8; i++)
-        //{
-        //    for (int j = 0; j < (i < 5 ? 1 : 2); j++)
-        //    {
-        //        _cellNodesEnterRisk = j == 0;
-        //        pathResult = FindPath(begXY, endXY, bounds, pawnTransitions, i, contentContainers);
-        //        if (pathResult.PathFound)
-        //        {
-        //            i = 8;
-        //            break;
-        //        }
-        //    }
-        //}
         return pathResult;
     }
 
     public PathResult FindPathToBoundsMin(TileContent begTileContent, params Transform[] contentContainers)
     {
-        _cellNodesEnterRisk = false;
         Vector2Int begXY = _tilemap.WorldToCell(begTileContent.transform.position);
         Bounds2Int bounds = _tilemap.GetTilesContentCellBounds(begXY, contentContainers);
         Vector2Int endXY = bounds.Min;
-        return FindPath(begXY, endXY, bounds, null, null, 8, contentContainers);
+        _cellNodesEnterRisk = false;
+        return FindPath(begXY, endXY, bounds, null, contentContainers);
     }
 
     private List<Vector2Int> CreatePath(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY, Vector2Int endXY)
@@ -190,8 +179,7 @@ public class BoardPathfinder : MonoBehaviour
     }
 
     private CellNode[] CreateCellNodes(Vector2Int begXY, Vector2Int endXY, Bounds2Int bounds,
-        List<PawnTransition> pawnTransitions, List<Vector2Int> lockedCells,
-        params Transform[] contentContainers)
+        List<PawnTransition> pawnTransitions, params Transform[] contentContainers)
     {
         var nodes = new CellNode[bounds.Size.x * bounds.Size.y];
         for (int i = 0; i < nodes.Length; i++)
@@ -202,14 +190,15 @@ public class BoardPathfinder : MonoBehaviour
         int nodeIndex;
         foreach (Transform container in contentContainers)
         {
-            foreach (Transform pawnTransform in container)
+            bool isPlayerPawnsContainer = container.childCount > 0 && container.GetChild(0).GetComponent<PlayerPawn>();
+            foreach (Transform child in container)
             {
-                Vector2Int cell = _tilemap.WorldToCell(pawnTransform.position);
+                Vector2Int cell = _tilemap.WorldToCell(child.position);
                 nodeIndex = GetCellNodeIndex(cell - bounds.Min, columns);
                 nodes[nodeIndex].locked = true;
+                nodes[nodeIndex].isPlayerPawn = isPlayerPawnsContainer;
             }
         }
-
         if (pawnTransitions != null)
         {
             foreach (var pawnTransition in pawnTransitions)
@@ -220,23 +209,13 @@ public class BoardPathfinder : MonoBehaviour
                 nodes[nodeIndex].locked = false;
             }
         }
-        if (lockedCells != null)
-        {
-            List<Vector2Int> lockedCellsInBounds = lockedCells.FindAll(cell => CellNodeInBounds(cell - bounds.Min, bounds.Size));
-            foreach (var cell in lockedCellsInBounds)
-            {
-                nodeIndex = GetCellNodeIndex(cell - bounds.Min, columns);
-                nodes[nodeIndex].locked = true;
-            }
-            //CreatePathSprites(lockedCellsInBounds, 0, 0, Color.black);
-        }
         CellNode begNode = nodes[GetCellNodeIndex(begXY, columns)];
         CellNode endNode = nodes[GetCellNodeIndex(endXY, columns)];
         begNode.distance = 0f;
         begNode.locked = false;
         endNode.locked = false;
 
-        SetCellNodesNgbrsCount(nodes, bounds, begXY);
+        SetCellNodesNgbrPlayerPawnsCount(nodes, bounds, begXY);
 
         if (_cellNodesEnterRisk)
             SetCellNodesEnterRisks(nodes, bounds, begXY);
@@ -246,7 +225,7 @@ public class BoardPathfinder : MonoBehaviour
 
     private void SetCellNoneEnterRisks(int x, int y, CellNode cellNode, CellNode[] nodes, int columns)
     {
-        if (cellNode.lockedNgbrsCount[0] >= 3)
+        if (cellNode.ngbrPlayerPawnsCount[0] >= 3)
         {
             //Func<int, int, bool> nodeIsLocked = (nodeX, nodeY) => {
             //    return nodes[GetCellNodeIndex(nodeX, nodeY, columns)].locked;
@@ -364,7 +343,7 @@ public class BoardPathfinder : MonoBehaviour
 #endif
     }
 
-    private void SetCellNodesNgbrsCount(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY)
+    private void SetCellNodesNgbrPlayerPawnsCount(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY)
     {
         Vector2Int size = bounds.Size;
         int columns = bounds.Size.x;
@@ -377,7 +356,7 @@ public class BoardPathfinder : MonoBehaviour
                 {
                     for (int k = 0; k < 3; k++)
                     {
-                        cellNode.lockedNgbrsCount[k] = 0;
+                        cellNode.ngbrPlayerPawnsCount[k] = 0;
                         int n_even = 2 + 2 * k;
                         int n_odd = n_even + 1; //3 + 2 * k;
                         int[] deltaJ = new int[n_odd];
@@ -400,7 +379,7 @@ public class BoardPathfinder : MonoBehaviour
                                 {
                                     int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
                                     CellNode ngbrNode = nodes[ngbrNodeIndex];
-                                    cellNode.lockedNgbrsCount[k] += ngbrNode.locked ? 1 : 0;
+                                    cellNode.ngbrPlayerPawnsCount[k] += ngbrNode.isPlayerPawn ? 1 : 0;
                                 }
                             }
                             //s += "\n";
@@ -413,10 +392,10 @@ public class BoardPathfinder : MonoBehaviour
     }
 
     private HashSet<Vector2Int> UpdateCellNodes(CellNode[] nodes, Bounds2Int bounds, HashSet<Vector2Int> nodesXY, Vector2Int targetXY,
-        int maxLockedNgbrsCount, out bool targetReached)
+        ref bool targetReached)
     {
         HashSet<Vector2Int> nextNodesXY = new HashSet<Vector2Int>();
-        targetReached = false;
+        //targetReached = false;
         foreach (var nodeXY in nodesXY)
         {
             int nodeIndex = GetCellNodeIndex(nodeXY, bounds.Size);
@@ -431,16 +410,9 @@ public class BoardPathfinder : MonoBehaviour
                 {
                     int ngbrNodeIndex = GetCellNodeIndex(ngbrXY, bounds.Size);
                     CellNode ngbrNode = nodes[ngbrNodeIndex];
-                    bool ngbrClosed = (_cellNodesEnterRisk && ngbrNode.ngbrsEnterRisk[i]) || ngbrNode.lockedNgbrsCount[0] > maxLockedNgbrsCount;
-                    if (!ngbrNode.locked && !ngbrClosed && !ngbrNode.@checked)
+                    bool ngbrClosed = _cellNodesEnterRisk && ngbrNode.ngbrsEnterRisk[i];
+                    if (!ngbrNode.locked && !ngbrClosed)
                     {
-                        if (!nextNodesXY.Contains(ngbrXY))
-                        {
-                            nextNodesXY.Add(ngbrXY);
-                        }
-#if DEBUG_DISTANCE_INT
-                        float delta = 1f;
-#else
                         float delta = ngbrDeltaXY.x == 0 || ngbrDeltaXY.y == 0 ? 1f : SQRT2;
 #if LOCKED_CELLS_HEIGHTS
                         for (int j = 0; j < 3; j++)
@@ -448,16 +420,23 @@ public class BoardPathfinder : MonoBehaviour
                             delta += 1.5f * ngbrNode.lockedNgbrsCount[j] / (8 * (i + 1));
                         }
 #endif
-#endif
-                        ngbrNode.distance = Mathf.Min(ngbrNode.distance, node.distance + delta);
+                        Vector2Int ngbrTargetRay = ngbrXY - targetXY;
+                        int ngbrTargetCellDistance = Mathf.Max(Math.Abs(ngbrTargetRay.x), Mathf.Abs(ngbrTargetRay.y));
+                        float ngbrDistance = node.distance + delta * 0.25f + (ngbrTargetCellDistance > 2 ? ngbrNode.ngbrPlayerPawnsCount[0] : 0f);
+                        //float ngbrDistance = node.distance + delta;
+                        if ((!ngbrNode.@checked || ngbrDistance < ngbrNode.distance) && !nextNodesXY.Contains(ngbrXY))
+                        {
+                            nextNodesXY.Add(ngbrXY);
+                        }
+                        ngbrNode.distance = Mathf.Min(ngbrNode.distance, ngbrDistance);
 #if DEBUG_SHOW_DISTANCES
-                        SetTileMeshText(ngbrXY + bounds.Min, ngbrNode.distance.ToString("F1"));
+                        SetTileMeshText(ngbrXY + bounds.Min, ngbrNode.distance.ToString("F1") + "\n" + ngbrNode.ngbrPlayerPawnsCount[0]);
 #endif
                         if (ngbrXY == targetXY)
                         {
                             targetReached = true;
-                            nextNodesXY.Clear();
-                            return nextNodesXY;
+                            //nextNodesXY.Clear();
+                            //return nextNodesXY;
                         }
                     }
                 }
@@ -472,8 +451,8 @@ public class BoardPathfinder : MonoBehaviour
         bool targetReached = false;
         while (nodesXY.Count > 0)
         {
-            nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, 8, out targetReached);
-            yield return new WaitForSeconds(0.05f);
+            nodesXY = UpdateCellNodes(nodes, bounds, nodesXY, endXY, ref targetReached);
+            yield return new WaitForSeconds(0.1f);
         }
         onEnd(targetReached);
     }

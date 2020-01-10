@@ -78,7 +78,6 @@ public class EnemyHandler : MonoBehaviour
 
         List<PathResult> pathResults = new List<PathResult>();
         List<PawnTransition> pawnTransitions = new List<PawnTransition>();
-        List<Vector2Int> lockedCells = new List<Vector2Int>();
         foreach (var enemyPawn in _enemySingles)
         {
             PathResult pathResult = null;
@@ -97,7 +96,6 @@ public class EnemyHandler : MonoBehaviour
                 _pathfinder.CreatePathSprites(path, 1, 1, Color.white);
                 PawnTransition pawnTransition = new PawnTransition(enemyPawn, _tilemap, path.PickLastElement());
                 pawnTransitions.Add(pawnTransition);
-                lockedCells.Add(pawnTransition.EndCell);
             }
         }
         if (pawnTransitions.Count > 0)

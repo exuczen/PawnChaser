@@ -106,7 +106,7 @@ public class Board : MonoBehaviour
         foreach (EnemyPawn pawn in _enemyPawns)
         {
             pawn.AddCellPositionToStack(_tilemap);
-            pawn.AddPathSpriteOnCurrentCell(_tilemap, _enemyPawnsPathSpritesContainer);
+            //pawn.AddPathSpriteOnCurrentCell(_tilemap, _enemyPawnsPathSpritesContainer);
         }
         _playerMovesLeftStack.Add(_playerMovesLeft);
         _pawnsPositionsSaved = true;
