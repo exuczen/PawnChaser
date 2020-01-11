@@ -98,8 +98,8 @@ public class BoardTilemap : GridTilemap<BoardTile>
     {
         foreach (Transform child in parent)
         {
-            min = Maths.Min(child.position, min);
-            max = Maths.Max(child.position, max);
+            min = Mathv.Min(child.position, min);
+            max = Mathv.Max(child.position, max);
         }
         Bounds2 bounds = new Bounds2();
         bounds.SetMinMax(min, max);
@@ -111,8 +111,8 @@ public class BoardTilemap : GridTilemap<BoardTile>
         foreach (Transform child in parent)
         {
             Vector2Int cell = WorldToCell(child.position);
-            min = Maths.Min(cell, min);
-            max = Maths.Max(cell, max);
+            min = Mathv.Min(cell, min);
+            max = Mathv.Max(cell, max);
         }
         return new Bounds2Int(min, max - min + Vector2Int.one);
     }
@@ -124,8 +124,8 @@ public class BoardTilemap : GridTilemap<BoardTile>
 
     public Bounds2Int GetTilesContentCellBounds(Vector2Int initXY1, Vector2Int initXY2, params Transform[] contentContainers)
     {
-        Vector2Int min = Maths.Min(initXY1, initXY2);
-        Vector2Int max = Maths.Max(initXY1, initXY2);
+        Vector2Int min = Mathv.Min(initXY1, initXY2);
+        Vector2Int max = Mathv.Max(initXY1, initXY2);
         Bounds2Int bounds = new Bounds2Int(initXY1, Vector2Int.one);
         foreach (Transform container in contentContainers)
         {
