@@ -141,7 +141,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
         BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);
         if (boardLevel != null)
         {
-            if (EditorApplicationUtils.ApplicationIsPlaying)
+            if (Application.isPlaying)
             {
                 _enemyPawnsPathSpritesContainer.DestroyAllChildren();
                 foreach (Transform container in _tilemap.transform)
@@ -171,7 +171,7 @@ public class BoardTilemap : GridTilemap<BoardTile>
                 _enemyPawnPrefab.CreateInstance<EnemyPawn>(enemyPawnsData[i].cell, this, _enemyPawnsContainer);
             }
             ResetCamera();
-            if (EditorApplicationUtils.ApplicationIsPlaying)
+            if (Application.isPlaying)
             {
                 ResetTilemap();
             }

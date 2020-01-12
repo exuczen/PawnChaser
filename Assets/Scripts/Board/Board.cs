@@ -185,7 +185,7 @@ public class Board : MonoBehaviour
             _playerMovesInTurn = boardLevel.PlayerMovesInTurn;
         }
         SetPlayerMovesLeft(_playerMovesInTurn);
-        if (EditorApplicationUtils.ApplicationIsPlaying)
+        if (Application.isPlaying)
         {
             _playerMovesLeftStack.Clear();
             _pathfinder.ClearSprites();

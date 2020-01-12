@@ -20,7 +20,7 @@ public class LevelsTilemap : GridTilemap<GridTile>
         {
             _planeHalfHeightInView = Mathf.Sqrt(a * a + b * b - 2 * a * b * Mathf.Cos(Mathf.Deg2Rad * _camera.fieldOfView)) / 2f;
         }
-        if (EditorApplicationUtils.ApplicationIsPlaying)
+        if (Application.isPlaying)
         {
             ResetTilemap();
         }

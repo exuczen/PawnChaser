@@ -46,7 +46,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
     private void Start()
     {
         _cameraCell = GetCameraCell();
-        if (EditorApplicationUtils.ApplicationIsPlaying)
+        if (Application.isPlaying)
         {
             OnStart();
         }
@@ -236,7 +236,7 @@ public abstract class GridTilemap<T> : MonoBehaviour where T : GridTile
 
     private void LateUpdate()
     {
-        if (EditorApplicationUtils.ApplicationIsPlaying)
+        if (Application.isPlaying)
         {
             Vector2Int camPrevCell = _cameraCell;
             Vector2Int camCurrCell = GetCameraCell();
