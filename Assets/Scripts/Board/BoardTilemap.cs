@@ -136,6 +136,21 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return bounds;
     }
 
+    public Vector3 GetTouchRayIntersection(Camera camera, Vector3 touchPos)
+    {
+        Vector3 worldPoint;
+        if (camera.orthographic && camera.transform.rotation == _tilemap.transform.rotation)
+        {
+            worldPoint = camera.ScreenToWorldPoint(touchPos);
+        }
+        else
+        {
+            Maths.GetTouchRayIntersectionWithPlane(camera, touchPos, -_tilemap.transform.forward, _tilemap.transform.position, out worldPoint);
+        }
+        return worldPoint;
+    }
+
+
     public BoardLevel LoadLevelFromJson(int levelIndex)
     {
         BoardLevel boardLevel = BoardLevel.LoadFromJson(levelIndex);

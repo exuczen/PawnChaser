@@ -51,21 +51,6 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         }
     }
 
-    private Vector3 GetTouchRayIntersectionWithBoard(Vector3 touchPos)
-    {
-        Camera camera = Camera.main;
-        Vector3 worldPoint;
-        if (camera.orthographic && camera.transform.rotation == _tilemap.transform.rotation)
-        {
-            worldPoint = camera.ScreenToWorldPoint(touchPos);
-        }
-        else
-        {
-            Maths.GetTouchRayIntersectionWithPlane(camera, touchPos, -_tilemap.transform.forward, _tilemap.transform.position, out worldPoint);
-        }
-        return worldPoint;
-    }
-
     //private void SetInputEnabled(bool enabled)
     //{
     //    _raycastBlocker.gameObject.SetActive(!enabled);
@@ -104,7 +89,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
         {
             //Debug.Log(GetType() + ".OnDrag: " + eventData.position);
             HideImage(_targetCircle);
-            Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
+            Vector3 worldPoint = _tilemap.GetTouchRayIntersection(Camera.main, eventData.position);
             Vector2Int pawnCell = _tilemap.WorldToCell(_selectedPawn.transform.position);
             Vector2Int destCell = _tilemap.WorldToCell(worldPoint);
             //Debug.Log(GetType() + ".OnDrag: " + _selectedCell + "->" + destCell + " " + _tilemap.Tilemap.cellSize + " " + _tilemap.Tilemap.cellBounds.size);
@@ -144,7 +129,7 @@ public class BoardTouchHandler : UIBehaviour, IPointerDownHandler, IPointerUpHan
     {
         if (_movePawnRoutine == null)
         {
-            Vector3 worldPoint = GetTouchRayIntersectionWithBoard(eventData.position);
+            Vector3 worldPoint = _tilemap.GetTouchRayIntersection(Camera.main, eventData.position);
             //Debug.Log(GetType() + ".OnPonterDown: " + eventData.position + Input.mousePosition + worldPoint);
             BoardTile tile = _tilemap.GetTile(worldPoint, out Vector2Int cell);
             if (tile)

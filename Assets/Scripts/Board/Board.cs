@@ -22,9 +22,8 @@ public class Board : MonoBehaviour
     [SerializeField] private Transform _enemyPawnsContainer = default;
     //[SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
 
-    [Header("BOARD LEVEL")]
-    [SerializeField] private int _levelIndex = default;
-    [SerializeField] private int _playerMovesInTurn = default;
+    [SerializeField, HideInInspector] private int _levelIndex = default;
+    [SerializeField, HideInInspector] private int _playerMovesInTurn = default;
 
     private BoardPathfinder _pathfinder = default;
     private EnemyHandler _enemyHandler = default;
@@ -36,8 +35,8 @@ public class Board : MonoBehaviour
     private BoardScreen _boardScreen = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
-    public int LevelIndex { get => _levelIndex; }
-    public int PlayerMovesInTurn { get => _playerMovesInTurn; }
+    public int LevelIndex { get => _levelIndex; set => _levelIndex = value; }
+    public int PlayerMovesInTurn { get => _playerMovesInTurn; set => _playerMovesInTurn = value; }
     public BoardScreen BoardScreen { get => _boardScreen; set => _boardScreen = value; }
 
     private void Awake()
