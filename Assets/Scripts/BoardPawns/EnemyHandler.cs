@@ -10,7 +10,7 @@ using UnityEngine;
 public class EnemyHandler : MonoBehaviour
 {
     [SerializeField] private Transform _playerPawnsContainer = default;
-    [SerializeField] private Transform _playerTargetsContainer = default;
+    //[SerializeField] private Transform _playerTargetsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
     [SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
     [SerializeField] private Transform _enemyTargetsContainer = default;

@@ -211,9 +211,9 @@ public class BoardPathfinder : MonoBehaviour
         begNode.locked = false;
         endNode.locked = false;
 
-        SetCellNodesNgbrPlayerPawnsCount(nodes, bounds, begXY);
-
+        SetCellNodesNgbrPlayerPawnsCount(nodes, bounds);
         SetCellNodesEnterRisks(nodes, bounds, begXY, endXY);
+        ResetCellNodesNgbrPlayerPawnsCountAroundTarged(nodes, bounds, endXY, 2);
 
         return nodes;
     }
@@ -344,7 +344,29 @@ public class BoardPathfinder : MonoBehaviour
         }
     }
 
-    private void SetCellNodesNgbrPlayerPawnsCount(CellNode[] nodes, Bounds2Int bounds, Vector2Int begXY)
+    private void ResetCellNodesNgbrPlayerPawnsCountAroundTarged(CellNode[] nodes, Bounds2Int bounds, Vector2Int endXY, int offset)
+    {
+        int columns = bounds.Size.x;
+        for (int y = endXY.y - offset; y <= endXY.y + offset; y++)
+        {
+            for (int x = endXY.x - offset; x <= endXY.x + offset; x++)
+            {
+                if (CellNodeInBounds(x, y, bounds.Size))
+                {
+                    CellNode cellNode = nodes[GetCellNodeIndex(x, y, columns)];
+                    if (!cellNode.locked)
+                    {
+                        for (int k = 0; k < 3; k++)
+                        {
+                            cellNode.ngbrPlayerPawnsCount[k] = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void SetCellNodesNgbrPlayerPawnsCount(CellNode[] nodes, Bounds2Int bounds)
     {
         Vector2Int size = bounds.Size;
         int columns = bounds.Size.x;
@@ -425,9 +447,7 @@ public class BoardPathfinder : MonoBehaviour
                             delta += 1.5f * ngbrNode.lockedNgbrsCount[j] / (8 * (i + 1));
                         }
 #endif
-                        Vector2Int ngbrTargetRay = ngbrXY - targetXY;
-                        int ngbrTargetCellDistance = Mathf.Max(Math.Abs(ngbrTargetRay.x), Mathf.Abs(ngbrTargetRay.y));
-                        float ngbrDistance = node.distance + delta * 0.25f + (ngbrTargetCellDistance > 2 ? ngbrNode.ngbrPlayerPawnsCount[0] : 0f);
+                        float ngbrDistance = node.distance + delta * 0.25f + ngbrNode.ngbrPlayerPawnsCount[0];
                         //float ngbrDistance = node.distance + delta;
                         if ((!ngbrNode.@checked || ngbrDistance < ngbrNode.distance) && !nextNodesXY.Contains(ngbrXY))
                         {
@@ -546,8 +566,13 @@ public class BoardPathfinder : MonoBehaviour
         return GetCellNodeIndex(cell, size.x);
     }
 
+    private bool CellNodeInBounds(int x, int y, Vector2Int size)
+    {
+        return x >= 0 && x < size.x && y >= 0 && y < size.y;
+    }
+
     private bool CellNodeInBounds(Vector2Int cell, Vector2Int size)
     {
-        return cell.x >= 0 && cell.x < size.x && cell.y >= 0 && cell.y < size.y;
+        return CellNodeInBounds(cell.x, cell.y, size);
     }
 }

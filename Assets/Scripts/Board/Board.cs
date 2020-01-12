@@ -20,7 +20,7 @@ public class Board : MonoBehaviour
     [SerializeField] private BoardTilemap _tilemap = default;
     [SerializeField] private Transform _playerPawnsContainer = default;
     [SerializeField] private Transform _enemyPawnsContainer = default;
-    [SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
+    //[SerializeField] private Transform _enemyPawnsPathSpritesContainer = default;
 
     [Header("BOARD LEVEL")]
     [SerializeField] private int _levelIndex = default;

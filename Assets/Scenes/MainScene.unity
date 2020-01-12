@@ -17663,7 +17663,6 @@ MonoBehaviour:
   _tilemap: {fileID: 1426162614}
   _playerPawnsContainer: {fileID: 238704525}
   _enemyPawnsContainer: {fileID: 1987203265}
-  _enemyPawnsPathSpritesContainer: {fileID: 259035198}
   _levelIndex: 5
   _playerMovesInTurn: 2
 --- !u!114 &1855168488
@@ -17697,7 +17696,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _playerPawnsContainer: {fileID: 238704525}
-  _playerTargetsContainer: {fileID: 559449742}
   _enemyPawnsContainer: {fileID: 1987203265}
   _enemyPawnsPathSpritesContainer: {fileID: 259035198}
   _enemyTargetsContainer: {fileID: 717898869}
