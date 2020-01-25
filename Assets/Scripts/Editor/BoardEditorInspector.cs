@@ -9,7 +9,6 @@ using UnityEngine;
 [CustomEditor(typeof(BoardEditor))]
 public class BoardEditorInspector : Editor
 {
-    private int _selectedTileButtonIndex = 0;
     private bool _defaultInspectorEnabled = default;
 
     private void OnSceneGUI()
@@ -27,22 +26,22 @@ public class BoardEditorInspector : Editor
     {
         BoardEditor boardEditor = target as BoardEditor;
         BoardTilemap tilemap = boardEditor.Tilemap;
-        BoardEditorTileContents tileContents = boardEditor.TileContents;
-        if (tileContents)
+        TileContentButtons tileContentButtons = boardEditor.TileContentButtons;
+        if (tileContentButtons)
         {
-            if (tileContents.Textures == null)
-                tileContents.AssignButtonTextures();
-            Texture[] buttonTextures = tileContents.Textures;
+            if (tileContentButtons.Textures == null)
+                tileContentButtons.AssignButtonTextures();
+            Texture[] buttonTextures = tileContentButtons.Textures;
             GUILayout.BeginVertical("Box");
-            int prevTileButtonIndex = _selectedTileButtonIndex;
-            _selectedTileButtonIndex = GUILayout.SelectionGrid(_selectedTileButtonIndex, buttonTextures, 4);
-            if (prevTileButtonIndex != _selectedTileButtonIndex)
+            int prevTileContentButtonIndex = boardEditor.SelectedTileContentButtonIndex;
+            boardEditor.SelectedTileContentButtonIndex = GUILayout.SelectionGrid(boardEditor.SelectedTileContentButtonIndex, buttonTextures, 4);
+            if (prevTileContentButtonIndex != boardEditor.SelectedTileContentButtonIndex)
             {
-                Debug.Log("You chose " + tileContents.GetTileContentType(_selectedTileButtonIndex));
+                Debug.Log("You chose " + tileContentButtons.GetTileContentType(boardEditor.SelectedTileContentButtonIndex));
             }
             if (GUILayout.Button("Assign buttons"))
             {
-                tileContents.AssignButtonTextures();
+                tileContentButtons.AssignButtonTextures();
             }
             GUILayout.EndVertical();
         }

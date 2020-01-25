@@ -25,8 +25,8 @@ public class TileContentButton
     public TileContentType ContentType { get => _contentType; }
 }
 
-//[CreateAssetMenu(menuName = "BoardEditor/TileContents")]
-public class BoardEditorTileContents : ScriptableObject
+//[CreateAssetMenu(menuName = "BoardEditor/TileContentButtons")]
+public class TileContentButtons : ScriptableObject
 {
     [ArrayElementTitle("_contentType")]
     [SerializeField] private TileContentButton[] _buttons = default;

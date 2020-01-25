@@ -58,6 +58,59 @@ public class BoardTilemap : GridTilemap<BoardTile>
         return tile;
     }
 
+    public void SetTileContent(TileContentType type, Vector2Int cellXY)
+    {
+        BoardTile tile = GetTile(cellXY);
+        if (tile)
+        {
+            TileContentType currType = TileContentType.Empty;
+            if (tile.Content)
+            {
+                TileContent currTileContent = tile.Content;
+                if (currTileContent is PlayerPawn)
+                    currType = TileContentType.PlayerPawn;
+                else if (currTileContent is PlayerPawnTarget)
+                    currType = TileContentType.PlayerPawnTarget;
+                else if (currTileContent is EnemyPawn)
+                    currType = TileContentType.EnemyPawn;
+                else if (currTileContent is EnemyPawnTarget)
+                    currType = TileContentType.EnemyPawnTarget;
+                if (Application.isPlaying)
+                {
+                    Destroy(tile.Content.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(tile.Content.gameObject);
+                }
+                tile.Content = null;
+            }
+            if (type == currType)
+            {
+                type = TileContentType.Empty;
+            }
+            Debug.Log(GetType() + ".SetTileContent: " + cellXY + " " + currType + " -> " + type);
+            switch (type)
+            {
+                case TileContentType.Empty:
+                    break;
+                case TileContentType.PlayerPawn:
+                    tile.Content = _playerPawnPrefab.CreateInstance<PlayerPawn>(cellXY, this, _playerPawnsContainer);
+                    break;
+                case TileContentType.PlayerPawnTarget:
+                    break;
+                case TileContentType.EnemyPawn:
+                    tile.Content = _enemyPawnPrefab.CreateInstance<EnemyPawn>(cellXY, this, _enemyPawnsContainer);
+                    break;
+                case TileContentType.EnemyPawnTarget:
+                    tile.Content = _enemyPawnTargetPrefab.CreateInstance<EnemyPawnTarget>(cellXY, this, _enemyTargetsContainer);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
     private void SetTilesContent(Transform contentContainer)
     {
         if (contentContainer)

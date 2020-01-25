@@ -7,10 +7,14 @@ using UnityEngine;
 public class BoardEditor : MonoBehaviour
 {
     [SerializeField] private BoardTilemap _tilemap = default;
-    [SerializeField] private BoardEditorTileContents _tileContents = default;
+    [SerializeField] private TileContentButtons _tileContentButtons = default;
+
+    private int _selectedTileContentButtonIndex = 0;
+    private bool enabledOnUpdate = default;
 
     public BoardTilemap Tilemap { get => _tilemap; }
-    public BoardEditorTileContents TileContents { get => _tileContents; }
+    public TileContentButtons TileContentButtons { get => _tileContentButtons; }
+    public int SelectedTileContentButtonIndex { get => _selectedTileContentButtonIndex; set => _selectedTileContentButtonIndex = value; }
 
     private void Awake()
     {
@@ -20,19 +24,45 @@ public class BoardEditor : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        Debug.Log(GetType() + ".OnEnable: enabledOnUpdate: " + enabledOnUpdate);
+        if (!enabledOnUpdate)
+        {
+            _tilemap.SetTilesContent();
+        }
+        enabledOnUpdate = false;
+    }
+
+    private void EnableOnUpdate()
+    {
+        enabledOnUpdate = true;
+        enabled = true;
+        EditorApplication.update -= EnableOnUpdate;
+    }
+
     private void OnGUI()
     {
-        Event currEvent = Event.current;
-        if (currEvent.type == EventType.Layout || currEvent.type == EventType.Repaint)
+        //Debug.Log(GetType() + ".OnGUI: " + isActiveAndEnabled + " " + enabled + " " + EditorApplication.timeSinceStartup + " " + Event.GetEventCount());
+        if (Event.GetEventCount() <= 1)
         {
-            EditorUtility.SetDirty(this); // this is important, if omitted, "Mouse down" will not be display
+            Event currEvent = Event.current;
+            if (currEvent.type == EventType.Layout || currEvent.type == EventType.Repaint)
+            {
+                EditorUtility.SetDirty(this); // this is important, if omitted, "Mouse down" will not be display
+            }
+            else if (currEvent.type == EventType.MouseDown)
+            {
+                Vector3 worldPos = _tilemap.GetTouchRayIntersection(Camera.main, currEvent.mousePosition);
+                Vector2Int cell = _tilemap.WorldToCell(worldPos);
+                cell.y = -cell.y - 1;
+                _tilemap.SetTileContent(_tileContentButtons.GetTileContentType(_selectedTileContentButtonIndex), cell);
+            }
         }
-        else if (currEvent.type == EventType.MouseDown)
+        else
         {
-            Vector3 worldPos = _tilemap.GetTouchRayIntersection(Camera.main, currEvent.mousePosition);
-            Vector2Int cell = _tilemap.WorldToCell(worldPos);
-            cell.y = -cell.y - 1;
-            Debug.Log(GetType() + ".OnGUI: cell:" + cell + " " + _tilemap.GetTile(cell).Content);
+            enabled = false;
+            EditorApplication.update += EnableOnUpdate;
         }
     }
 }
