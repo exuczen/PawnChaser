@@ -13053,9 +13053,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _activeOnAppAwake: 1
-  _appMessageBus: {fileID: 11400000, guid: d5282f09d07e4404d9aaaf62159942a6, type: 2}
-  _showScreenMessage: {fileID: 11400000, guid: 2d8602012a9e0d74d950045342df57b1, type: 2}
-  _backMessage: {fileID: 11400000, guid: 12888df37135b294f9e8ebb8a6538dc7, type: 2}
+  _appMessages: {fileID: 11400000, guid: 1637f976247f4d243b891bf6390d370c, type: 2}
   _topLayer: {fileID: 1370620050}
   _levelsScreen: {fileID: 1253958425}
 --- !u!114 &669952326
