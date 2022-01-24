@@ -1,0 +1,3 @@
+[submodule "Assets/External/MustHave"]
+	path = Assets/External/MustHave
+	url = https://github.com/exuczen/MustHave.git

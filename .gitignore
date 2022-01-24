@@ -4,7 +4,7 @@
 [Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
-/Assets/External/MustHave/
+# /Assets/External/MustHave/
 .gradle/
 
 # Visual Studio cache directory
