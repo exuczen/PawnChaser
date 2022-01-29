@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿#if UNITY_EDITOR
 using UnityEditor;
 
 public class OtherMenuItem : Editor
@@ -13,3 +9,4 @@ public class OtherMenuItem : Editor
     //    WineData.SaveWineDataToJson();
     //}
 }
+#endif

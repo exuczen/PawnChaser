@@ -1,6 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 [ExecuteInEditMode, RequireComponent(typeof(Board))]
@@ -34,6 +34,7 @@ public class BoardEditor : MonoBehaviour
         enabledOnUpdate = false;
     }
 
+#if UNITY_EDITOR
     private void EnableOnUpdate()
     {
         enabledOnUpdate = true;
@@ -65,4 +66,5 @@ public class BoardEditor : MonoBehaviour
             EditorApplication.update += EnableOnUpdate;
         }
     }
+#endif
 }

@@ -1,7 +1,7 @@
 {
     "name": "PawnChaser",
     "references": [
-        "GUID:982f2a63d1c3af2439b7f1422ffc1024"
+        "GUID:779e588a7e722294f939043577d2e933"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -10,5 +10,6 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": []
+    "versionDefines": [],
+    "noEngineReferences": false
 }
