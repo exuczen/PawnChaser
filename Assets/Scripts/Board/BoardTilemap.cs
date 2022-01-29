@@ -151,8 +151,8 @@ public class BoardTilemap : GridTilemap<BoardTile>
     {
         foreach (Transform child in parent)
         {
-            min = Mathv.Min(child.position, min);
-            max = Mathv.Max(child.position, max);
+            min = Vector2.Min(child.position, min);
+            max = Vector2.Max(child.position, max);
         }
         Bounds2 bounds = new Bounds2();
         bounds.SetMinMax(min, max);
