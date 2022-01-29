@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using MustHave;
-using MustHave.Utilities;
+using MustHave.Utils;
 using System;
 using UnityEngine.UI;
 

@@ -1,7 +1,7 @@
 ﻿//#define RELOAD_ON_START_IN_EDIT_MODE
 //#define DEBUG_ADDED_TILES
 
-using MustHave.Utilities;
+using MustHave.Utils;
 using System;
 using System.Collections.Generic;
 using UnityEngine;

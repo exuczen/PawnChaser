@@ -1,7 +1,7 @@
 ﻿//#define DEBUG_LEVEL
 
 using MustHave.UI;
-using MustHave.Utilities;
+using MustHave.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;

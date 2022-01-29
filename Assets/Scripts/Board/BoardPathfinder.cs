@@ -3,7 +3,7 @@
 //#define LOCKED_CELLS_HEIGHTS
 
 using MustHave;
-using MustHave.Utilities;
+using MustHave.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;

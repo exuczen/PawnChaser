@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using MustHave.Utilities;
+using MustHave.Utils;
 using System;
 using MustHave;
 using UnityEngine.Tilemaps;
