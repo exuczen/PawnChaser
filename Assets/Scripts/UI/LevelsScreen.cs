@@ -8,7 +8,7 @@ public class LevelsScreen : ScreenScript
         Canvas.AlertPopup.ShowWithConfirmButton("Ready, Steady, Go!", () => {
             PlayerPrefs.SetInt(PlayerData.PLAYER_PREFS_LEVEL_INDEX, level - 1);
             Canvas.ShowScreenFromOtherScene<BoardScreen, BoardCanvas>(SceneName.MainScene, false, false);
-        }, false);
+        }, false, false);
     }
 }
 

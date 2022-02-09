@@ -26,7 +26,7 @@ public class BoardScreen : ScreenScript
         Canvas.AlertPopup.SetText("Are you sure you want to quit?")
             .SetButtons(
                 AlertButtonData.Create(AlertPopup.BUTTON_NO, null),
-                AlertButtonData.Create(AlertPopup.BUTTON_YES, ShowLevelsScreen)
+                AlertButtonData.Create(AlertPopup.BUTTON_YES, ShowLevelsScreen, false)
             ).Show();
         return false;
     }
@@ -38,7 +38,7 @@ public class BoardScreen : ScreenScript
                 AlertButtonData.Create("Reset", () => {
                     _board.ResetLevel();
                 }),
-                AlertButtonData.Create("Menu", ShowLevelsScreen),
+                AlertButtonData.Create("Menu", ShowLevelsScreen, false),
                 AlertButtonData.Create("Back", null)
             ).Show();
     }
