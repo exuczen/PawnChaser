@@ -58,8 +58,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fb8571e46962754a934ce4b04527a2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _activeOnEnter: 1
-  _activeOnExit: 0
+  activeOnEnter: 1
+  activeOnExit: 0
 --- !u!114 &114063412977870154
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -72,8 +72,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fb8571e46962754a934ce4b04527a2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _activeOnEnter: 1
-  _activeOnExit: 1
+  activeOnEnter: 1
+  activeOnExit: 1
 --- !u!114 &114256789853136048
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -86,8 +86,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fb8571e46962754a934ce4b04527a2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _activeOnEnter: 0
-  _activeOnExit: 0
+  activeOnEnter: 0
+  activeOnExit: 0
 --- !u!1101 &1101010970624725822
 AnimatorStateTransition:
   m_ObjectHideFlags: 1
