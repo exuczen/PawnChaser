@@ -1,7 +1,7 @@
 ﻿using MustHave.UI;
 using UnityEngine;
 
-public class LevelsScreen : ScreenScript
+public class LevelsScreen : UIScreen
 {
     public void ShowLevelPopup(int level)
     {

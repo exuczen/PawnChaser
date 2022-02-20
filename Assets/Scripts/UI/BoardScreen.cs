@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class BoardScreen : ScreenScript
+public class BoardScreen : UIScreen
 {
     [SerializeField] private Button _optionsButton = default;
     [SerializeField] private Button _undoMovesButton = default;

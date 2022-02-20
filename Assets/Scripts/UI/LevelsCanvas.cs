@@ -1,7 +1,7 @@
 ﻿using MustHave.UI;
 using UnityEngine;
 
-public class LevelsCanvas : CanvasScript
+public class LevelsCanvas : UICanvas
 {
     [SerializeField] LevelsScreen _levelsScreen = default;
 

@@ -1,7 +1,7 @@
 ﻿using MustHave.UI;
 using UnityEngine;
 
-public class BoardCanvas : CanvasScript
+public class BoardCanvas : UICanvas
 {
     [SerializeField] BoardScreen _boardScreen = default;
 
