@@ -1045,7 +1045,6 @@ MonoBehaviour:
   - {fileID: 729593042389881917}
   popupText: {fileID: 188641101}
   emptyLineText: {fileID: 726805511}
-  canvasGroup: {fileID: 705767751}
 --- !u!225 &705767751
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -1508,14 +1507,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 622cbe05760a20741aef0dcad8f577ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _persistentObjectsList: []
-  _persistentComponentsList:
-  - {fileID: 1639722809}
-  _sceneMessageGroups: []
-  _appMessages: {fileID: 11400000, guid: 1637f976247f4d243b891bf6390d370c, type: 2}
-  _screenshotImage: {fileID: 439193661}
-  _alertPopup: {fileID: 1639722810}
-  _progressSpinnerPanel: {fileID: 643835405}
+  persistentObjects: []
+  persistentComponents: []
+  sceneMessageGroups: []
+  appMessages: {fileID: 11400000, guid: 1637f976247f4d243b891bf6390d370c, type: 2}
+  screenshotImage: {fileID: 439193661}
+  alertPopup: {fileID: 1639722810}
+  progressSpinnerPanel: {fileID: 643835405}
 --- !u!1 &1620026685815304412
 GameObject:
   m_ObjectHideFlags: 0
